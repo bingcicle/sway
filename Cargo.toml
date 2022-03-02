@@ -13,6 +13,7 @@ members = [
     "sway-utils",
     "test",
     "test-sig-gen-util",
+    "new-parser-again",
 ]
 exclude = [
     "examples/fizzbuzz",
