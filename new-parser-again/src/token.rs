@@ -298,7 +298,7 @@ pub fn lex(src: &Arc<str>, start: usize, end: usize, path: Option<Arc<PathBuf>>)
                 let _ = char_indices.next();
             };
             let span = span_until(src, index, &mut char_indices, &path);
-            let ident = Ident { span };
+            let ident = Ident::new(span);
             token_trees.push(TokenTree::Ident(ident));
             continue;
         }

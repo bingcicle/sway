@@ -2,10 +2,14 @@ use crate::priv_prelude::*;
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Ident {
-    pub(crate) span: Span,
+    span: Span,
 }
 
 impl Ident {
+    pub fn new(span: Span) -> Ident {
+        Ident { span }
+    }
+
     pub fn as_str(&self) -> &str {
         self.span.as_str()
     }
