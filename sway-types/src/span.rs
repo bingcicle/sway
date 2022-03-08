@@ -1,4 +1,4 @@
-use std::{path::PathBuf, sync::Arc};
+use std::{path::PathBuf, sync::Arc, borrow::Cow};
 
 /// Represents a span of the source code in a specific file.
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
@@ -10,12 +10,38 @@ pub struct Span {
 }
 
 impl Span {
+    pub fn from_pest(pest_span: pest::Span, path: Arc<PathBuf>) -> Span {
+        Span {
+            span: pest_span,
+            path: Some(path),
+        }
+    }
+
+    pub fn from_pest_no_path(pest_span: pest::Span) -> Span {
+        Span {
+            span: pest_span,
+            path: None,
+        }
+    }
+
+    pub fn src(&self) -> &Arc<str> {
+        self.span.input()
+    }
+
     pub fn start(&self) -> usize {
         self.span.start()
     }
 
     pub fn end(&self) -> usize {
         self.span.end()
+    }
+
+    pub fn path(&self) -> Option<&Arc<PathBuf>> {
+        self.path.as_ref()
+    }
+
+    pub fn path_str(&self) -> Option<Cow<'_, str>> {
+        self.path.as_deref().map(|path| path.to_string_lossy())
     }
 
     pub fn start_pos(&self) -> pest::Position {
@@ -42,12 +68,14 @@ impl Span {
         self.span.input()
     }
 
+    /*
     pub fn path(&self) -> String {
         self.path
             .as_deref()
             .map(|p| p.to_string_lossy().into_owned())
             .unwrap_or_else(|| "".to_string())
     }
+    */
 
     pub fn trim(self) -> Span {
         let start_delta = self.as_str().len() - self.as_str().trim_start().len();
