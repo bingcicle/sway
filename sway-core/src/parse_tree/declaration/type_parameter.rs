@@ -59,10 +59,10 @@ impl TypeParameter {
                 if let Some(where_clause_pair) = where_clause_pair {
                     return err(
                         Vec::new(),
-                        vec![CompileError::UnexpectedWhereClause(Span {
-                            span: where_clause_pair.as_span(),
+                        vec![CompileError::UnexpectedWhereClause(Span::from_pest(
+                            where_clause_pair.as_span(),
                             path,
-                        })],
+                        ))],
                     );
                 }
                 Vec::new()

@@ -28,7 +28,7 @@ pub struct MetadataIndex(pub generational_arena::Index);
 impl MetadataIndex {
     pub fn from_span(context: &mut Context, span: &Span) -> Option<MetadataIndex> {
         // Search for an existing matching path, otherwise insert it.
-        span.path.as_ref().map(|path_buf| {
+        span.path().map(|path_buf| {
             let loc_idx = context
                 .metadata
                 .iter()
@@ -45,7 +45,7 @@ impl MetadataIndex {
                     // found at `path_buf`.
                     MetadataIndex(context.metadata.insert(Metadatum::FileLocation(
                         path_buf.clone(),
-                        span.span.input().clone(),
+                        span.src().clone(),
                     )))
                 });
 
@@ -68,10 +68,7 @@ impl MetadataIndex {
                     Metadatum::FileLocation(path, src) => Ok((path.clone(), src.clone())),
                     _otherwise => Err(IrError::InvalidMetadatum),
                 }?;
-                Ok(Span {
-                    span: pest::Span::new(src, *start, *end).ok_or(IrError::InvalidMetadatum)?,
-                    path: Some(path),
-                })
+                Span::new(src, *start, *end, Some(path)).ok_or(IrError::InvalidMetadatum)
             }
             _otherwise => Err(IrError::InvalidMetadatum),
         }

@@ -22,10 +22,7 @@ impl AsmExpression {
         config: Option<&BuildConfig>,
     ) -> CompileResult<Self> {
         let path = config.map(|c| c.path());
-        let whole_block_span = Span {
-            span: pair.as_span(),
-            path: path.clone(),
-        };
+        let whole_block_span = Span::from_pest(pair.as_span(), path.clone());
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
         let mut iter = pair.into_inner();
@@ -59,10 +56,7 @@ impl AsmExpression {
                             warnings,
                             errors
                         ),
-                        Span {
-                            span: pair.as_span(),
-                            path: path.clone(),
-                        },
+                        Span::from_pest(pair.as_span(), path.clone()),
                     ));
                 }
                 Rule::type_name => {
@@ -132,10 +126,7 @@ impl AsmOp {
         let path = config.map(|c| c.path());
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
-        let span = Span {
-            span: pair.as_span(),
-            path: path.clone(),
-        };
+        let span = Span::from_pest(pair.as_span(), path.clone());
         let mut iter = pair.into_inner();
         let opcode = check!(
             ident::parse_from_pair(iter.next().unwrap(), config),
@@ -149,16 +140,10 @@ impl AsmOp {
         for pair in iter {
             match pair.as_rule() {
                 Rule::asm_register => {
-                    args.push(Ident::new(Span {
-                        span: pair.as_span(),
-                        path: path.clone(),
-                    }));
+                    args.push(Ident::new(Span::from_pest(pair.as_span(), path.clone())));
                 }
                 Rule::asm_immediate => {
-                    immediate_value = Some(Ident::new(Span {
-                        span: pair.as_span(),
-                        path: path.clone(),
-                    }));
+                    immediate_value = Some(Ident::new(Span::from_pest(pair.as_span(), path.clone())));
                 }
                 _ => unreachable!(),
             }

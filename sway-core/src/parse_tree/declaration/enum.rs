@@ -67,10 +67,7 @@ impl EnumDeclaration {
         config: Option<&BuildConfig>,
     ) -> CompileResult<Self> {
         let path = config.map(|c| c.path());
-        let whole_enum_span = Span {
-            span: decl_inner.as_span(),
-            path: path.clone(),
-        };
+        let whole_enum_span = Span::from_pest(decl_inner.as_span(), path.clone());
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
         let inner = decl_inner.into_inner();
@@ -119,10 +116,7 @@ impl EnumDeclaration {
         assert_or_warn!(
             is_upper_camel_case(name.as_str()),
             warnings,
-            Span {
-                span: enum_name.as_span(),
-                path,
-            },
+            Span::from_pest(enum_name.as_span(), path),
             Warning::NonClassCaseEnumName {
                 enum_name: name.clone()
             }
@@ -191,10 +185,7 @@ impl EnumVariant {
         if let Some(decl_inner) = decl_inner {
             let fields = decl_inner.into_inner().collect::<Vec<_>>();
             for i in (0..fields.len()).step_by(2) {
-                let variant_span = Span {
-                    span: fields[i].as_span(),
-                    path: config.map(|c| c.path()),
-                };
+                let variant_span = Span::from_pest(fields[i].as_span(), config.map(|c| c.path()));
                 let name = check!(
                     ident::parse_from_pair(fields[i].clone(), config),
                     return err(warnings, errors),

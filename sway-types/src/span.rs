@@ -4,25 +4,43 @@ use std::{path::PathBuf, sync::Arc, borrow::Cow};
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct Span {
     ///  A [pest::Span] returned directly from the generated parser.
-    pub span: pest::Span,
+    span: pest::Span,
     // A reference counted pointer to the file from which this span originated.
-    pub path: Option<Arc<PathBuf>>,
+    path: Option<Arc<PathBuf>>,
 }
 
 impl Span {
-    pub fn from_pest(pest_span: pest::Span, path: Arc<PathBuf>) -> Span {
+    pub fn from_pest(pest_span: pest::Span, path: Option<Arc<PathBuf>>) -> Span {
         Span {
             span: pest_span,
-            path: Some(path),
+            path,
         }
     }
 
+    /*
     pub fn from_pest_no_path(pest_span: pest::Span) -> Span {
         Span {
             span: pest_span,
             path: None,
         }
     }
+    */
+
+    pub fn new(src: Arc<str>, start: usize, end: usize, path: Option<Arc<PathBuf>>) -> Option<Span> {
+        Some(Span {
+            span: pest::Span::new(src, start, end)?,
+            path,
+        })
+    }
+
+    /*
+    pub fn new_no_path(src: Arc<str>, start: usize, end: usize) -> Option<Span> {
+        Some(Span {
+            span: pest::Span::new(src, start, end)?,
+            path: None,
+        })
+    }
+    */
 
     pub fn src(&self) -> &Arc<str> {
         self.span.input()

@@ -94,10 +94,10 @@ impl ControlFlowGraph {
                     let span = match last_discovered_span {
                         Some(ref o) => o.clone(),
                         None => {
-                            errors.push(CompileError::Internal("Attempted to construct return path error but no source span was found.", Span {
-                                span: pest::Span::new(" ".into(), 0, 0).unwrap(),
-                                path: None
-                            }));
+                            errors.push(CompileError::Internal(
+                                "Attempted to construct return path error but no source span was found.",
+                                Span::new(" ".into(), 0, 0, None).unwrap(),
+                            ));
                             return errors;
                         }
                     };

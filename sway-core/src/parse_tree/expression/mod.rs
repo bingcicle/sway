@@ -301,10 +301,7 @@ impl Expression {
             Expression::parse_from_pair_inner(first_expr.clone(), config),
             Expression::Tuple {
                 fields: vec![],
-                span: Span {
-                    span: first_expr.as_span(),
-                    path: path.clone(),
-                }
+                span: Span::from_pest(first_expr.as_span(), path.clone()),
             },
             warnings,
             errors
@@ -314,10 +311,7 @@ impl Expression {
         // sometimes exprs are followed by ops in the same expr
         while let Some(op) = expr_iter.next() {
             let op_str = op.as_str().to_string();
-            let op_span = Span {
-                span: op.as_span(),
-                path: path.clone(),
-            };
+            let op_span = Span::from_pest(op.as_span(), path.clone());
 
             let op = check!(
                 parse_op(op, config),
@@ -332,10 +326,7 @@ impl Expression {
                     Expression::parse_from_pair_inner(o.clone(), config),
                     Expression::Tuple {
                         fields: vec![],
-                        span: Span {
-                            span: o.as_span(),
-                            path: path.clone()
-                        }
+                        span: Span::from_pest(o.as_span(), path.clone()),
                     },
                     warnings,
                     errors
@@ -343,10 +334,7 @@ impl Expression {
                 None => {
                     errors.push(CompileError::ExpectedExprAfterOp {
                         op: op_str,
-                        span: Span {
-                            span: expr_for_debug.as_span(),
-                            path: path.clone(),
-                        },
+                        span: Span::from_pest(expr_for_debug.as_span(), path.clone()),
                     });
                     Expression::Tuple {
                         fields: vec![],
@@ -369,17 +357,11 @@ impl Expression {
         } else {
             let expr = arrange_by_order_of_operations(
                 expr_or_op_buf,
-                Span {
-                    span: expr_for_debug.as_span(),
-                    path: path.clone(),
-                },
+                Span::from_pest(expr_for_debug.as_span(), path.clone()),
             )
             .unwrap_or_else(&mut warnings, &mut errors, || Expression::Tuple {
                 fields: vec![],
-                span: Span {
-                    span: expr_for_debug.as_span(),
-                    path: path.clone(),
-                },
+                span: Span::from_pest(expr_for_debug.as_span(), path.clone()),
             });
             ok(expr, warnings, errors)
         }
@@ -392,10 +374,7 @@ impl Expression {
         let path = config.map(|c| c.path());
         let mut errors = Vec::new();
         let mut warnings = Vec::new();
-        let span = Span {
-            span: expr.as_span(),
-            path: path.clone(),
-        };
+        let span = Span::from_pest(expr.as_span(), path.clone());
         #[allow(unused_assignments)]
         let mut maybe_type_args = Vec::new();
         let parsed = match expr.as_rule() {
@@ -406,10 +385,7 @@ impl Expression {
                     span,
                 }),
             Rule::func_app => {
-                let span = Span {
-                    span: expr.as_span(),
-                    path: path.clone(),
-                };
+                let span = Span::from_pest(expr.as_span(), path.clone());
                 let mut func_app_parts = expr.into_inner();
                 let first_part = func_app_parts.next().unwrap();
                 assert!(first_part.as_rule() == Rule::call_path);
@@ -436,10 +412,7 @@ impl Expression {
                         Expression::parse_from_pair(argument.clone(), config),
                         Expression::Tuple {
                             fields: vec![],
-                            span: Span {
-                                span: argument.as_span(),
-                                path: path.clone()
-                            }
+                            span: Span::from_pest(argument.as_span(), path.clone()),
                         },
                         warnings,
                         errors
@@ -448,10 +421,7 @@ impl Expression {
                 }
                 let mut type_args_buf = vec![];
                 for arg in maybe_type_args {
-                    let sp = Span {
-                        span: arg.as_span(),
-                        path: path.clone(),
-                    };
+                    let sp = Span::from_pest(arg.as_span(), path.clone());
                     type_args_buf.push((
                         check!(
                             TypeInfo::parse_from_pair(arg.into_inner().next().unwrap(), config),
@@ -559,10 +529,7 @@ impl Expression {
                         warnings,
                         errors
                     );
-                    let span = Span {
-                        span: fields[i].as_span(),
-                        path: path.clone(),
-                    };
+                    let span = Span::from_pest(fields[i].as_span(), path.clone());
                     let value = check!(
                         Expression::parse_from_pair(fields[i + 1].clone(), config),
                         Expression::Tuple {
@@ -586,20 +553,14 @@ impl Expression {
                     Expression::parse_from_pair(expr.clone().into_inner().next().unwrap(), config),
                     Expression::Tuple {
                         fields: vec![],
-                        span: Span {
-                            span: expr.as_span(),
-                            path,
-                        }
+                        span: Span::from_pest(expr.as_span(), path),
                     },
                     warnings,
                     errors
                 )
             }
             Rule::code_block => {
-                let whole_block_span = Span {
-                    span: expr.as_span(),
-                    path,
-                };
+                let whole_block_span = Span::from_pest(expr.as_span(), path);
                 let expr = check!(
                     crate::CodeBlock::parse_from_pair(expr, config),
                     crate::CodeBlock {
@@ -615,10 +576,7 @@ impl Expression {
                 }
             }
             Rule::if_exp => {
-                let span = Span {
-                    span: expr.as_span(),
-                    path,
-                };
+                let span = Span::from_pest(expr.as_span(), path);
                 let mut if_exp_pairs = expr.into_inner();
                 let condition_pair = if_exp_pairs.next().unwrap();
                 let then_pair = if_exp_pairs.next().unwrap();
@@ -660,10 +618,7 @@ impl Expression {
                 }
             }
             Rule::asm_expression => {
-                let whole_block_span = Span {
-                    span: expr.as_span(),
-                    path,
-                };
+                let whole_block_span = Span::from_pest(expr.as_span(), path);
                 let asm = check!(
                     AsmExpression::parse_from_pair(expr, config),
                     return err(warnings, errors),
@@ -676,10 +631,7 @@ impl Expression {
                 }
             }
             Rule::method_exp => {
-                let whole_exp_span = Span {
-                    span: expr.as_span(),
-                    path: path.clone(),
-                };
+                let whole_exp_span = Span::from_pest(expr.as_span(), path.clone());
                 let mut parts = expr.into_inner();
                 let pair = parts.next().unwrap();
                 match pair.as_rule() {
@@ -711,10 +663,7 @@ impl Expression {
                                 Expression::parse_from_pair(argument.clone(), config),
                                 Expression::Tuple {
                                     fields: vec![],
-                                    span: Span {
-                                        span: argument.as_span(),
-                                        path: path.clone()
-                                    }
+                                    span: Span::from_pest(argument.as_span(), path.clone()),
                                 },
                                 warnings,
                                 errors
@@ -737,10 +686,7 @@ impl Expression {
                         for name_part in name_parts {
                             expr = Expression::SubfieldExpression {
                                 prefix: Box::new(expr.clone()),
-                                span: Span {
-                                    span: name_part.as_span(),
-                                    path: path.clone(),
-                                },
+                                span: Span::from_pest(name_part.as_span(), path.clone()),
                                 field_to_access: check!(
                                     ident::parse_from_pair(name_part, config),
                                     continue,
@@ -847,10 +793,7 @@ impl Expression {
                                     Expression::parse_from_pair(argument.clone(), config),
                                     Expression::Tuple {
                                         fields: vec![],
-                                        span: Span {
-                                            span: argument.as_span(),
-                                            path: path.clone()
-                                        }
+                                        span: Span::from_pest(argument.as_span(), path.clone()),
                                     },
                                     warnings,
                                     errors
@@ -871,10 +814,7 @@ impl Expression {
             Rule::delineated_path => {
                 // this is either an enum expression or looking something
                 // up in libraries
-                let span = Span {
-                    span: expr.as_span(),
-                    path,
-                };
+                let span = Span::from_pest(expr.as_span(), path);
                 let mut parts = expr.into_inner();
                 let path_component = parts.next().unwrap();
                 let instantiator = parts.next();
@@ -933,10 +873,7 @@ impl Expression {
                 }
             }
             Rule::tuple_index => {
-                let span = Span {
-                    span: expr.as_span(),
-                    path: path.clone(),
-                };
+                let span = Span::from_pest(expr.as_span(), path.clone());
                 let mut inner = expr.into_inner();
                 let call_item = inner.next().expect("guarenteed by grammar");
                 assert_eq!(call_item.as_rule(), Rule::call_item);
@@ -947,10 +884,7 @@ impl Expression {
                     errors
                 );
                 let the_integer = inner.next().expect("guarenteed by grammar");
-                let the_integer_span = Span {
-                    span: the_integer.as_span(),
-                    path: path.clone(),
-                };
+                let the_integer_span = Span::from_pest(the_integer.as_span(), path.clone());
                 let index: Result<usize, CompileError> =
                     the_integer.as_str().trim().parse().map_err(|e| {
                         handle_parse_int_error(
@@ -989,10 +923,7 @@ impl Expression {
                 for name_part in name_parts {
                     expr = Expression::SubfieldExpression {
                         prefix: Box::new(expr.clone()),
-                        span: Span {
-                            span: name_part.as_span(),
-                            path: path.clone(),
-                        },
+                        span: Span::from_pest(name_part.as_span(), path.clone()),
                         field_to_access: check!(
                             ident::parse_from_pair(name_part, config),
                             continue,
@@ -1005,10 +936,7 @@ impl Expression {
                 expr
             }
             Rule::abi_cast => {
-                let span = Span {
-                    span: expr.as_span(),
-                    path,
-                };
+                let span = Span::from_pest(expr.as_span(), path);
                 let mut iter = expr.into_inner();
                 let _abi_keyword = iter.next();
                 let abi_name = iter.next().expect("guaranteed by grammar");
@@ -1060,18 +988,12 @@ impl Expression {
                 );
                 errors.push(CompileError::UnimplementedRule(
                     a,
-                    Span {
-                        span: expr.as_span(),
-                        path: path.clone(),
-                    },
+                    Span::from_pest(expr.as_span(), path.clone()),
                 ));
                 // construct unit expression for error recovery
                 Expression::Tuple {
                     fields: vec![],
-                    span: Span {
-                        span: expr.as_span(),
-                        path,
-                    },
+                    span: Span::from_pest(expr.as_span(), path),
                 }
             }
         };
@@ -1091,10 +1013,7 @@ fn convert_unary_to_fn_calls(
     for item in iter {
         match item.as_rule() {
             Rule::unary_op => unary_stack.push((
-                Span {
-                    span: item.as_span(),
-                    path: config.map(|c| c.path()),
-                },
+                Span::from_pest(item.as_span(), config.map(|c| c.path())),
                 check!(
                     UnaryOp::parse_from_pair(item, config),
                     return err(warnings, errors),
@@ -1153,19 +1072,13 @@ pub(crate) fn parse_array_index(
     let mut exp = Expression::ArrayIndex {
         prefix: Box::new(prefix),
         index: Box::new(first_index.to_owned()),
-        span: Span {
-            span: span.clone(),
-            path: path.clone(),
-        },
+        span: Span::from_pest(span.clone(), path.clone()),
     };
     for index in index_buf.into_iter().skip(1) {
         exp = Expression::ArrayIndex {
             prefix: Box::new(exp),
             index: Box::new(index),
-            span: Span {
-                span: span.clone(),
-                path: path.clone(),
-            },
+            span: Span::from_pest(span.clone(), path.clone()),
         };
     }
     ok(exp, warnings, errors)
@@ -1177,10 +1090,7 @@ pub(crate) fn parse_size_of_expr(
 ) -> CompileResult<Expression> {
     let mut warnings = vec![];
     let mut errors = vec![];
-    let span = Span {
-        span: item.as_span(),
-        path: config.map(|c| c.path()),
-    };
+    let span = Span::from_pest(item.as_span(), config.map(|c| c.path()));
     let mut iter = item.into_inner();
     let size_of = iter.next().expect("gaurenteed by grammar");
     let exp = match size_of.as_rule() {
@@ -1203,10 +1113,7 @@ pub(crate) fn parse_size_of_expr(
             let mut inner_iter = size_of.into_inner();
             let _keyword = inner_iter.next();
             let elem = inner_iter.next().expect("guarenteed by grammar");
-            let type_span = Span {
-                span: elem.as_span(),
-                path: config.map(|c| c.path()),
-            };
+            let type_span = Span::from_pest(elem.as_span(), config.map(|c| c.path()));
             let type_name = check!(
                 TypeInfo::parse_from_pair(elem, config),
                 TypeInfo::ErrorRecovery,
@@ -1244,18 +1151,12 @@ fn parse_subfield_path(
             );
             errors.push(CompileError::UnimplementedRule(
                 a,
-                Span {
-                    span: item.as_span(),
-                    path: path.clone(),
-                },
+                Span::from_pest(item.as_span(), path.clone()),
             ));
             // construct unit expression for error recovery
             let exp = Expression::Tuple {
                 fields: vec![],
-                span: Span {
-                    span: item.as_span(),
-                    path,
-                },
+                span: Span::from_pest(item.as_span(), path),
             };
             ok(exp, warnings, errors)
         }
@@ -1278,10 +1179,7 @@ fn parse_call_item(item: Pair<Rule>, config: Option<&BuildConfig>) -> CompileRes
                 warnings,
                 errors
             ),
-            span: Span {
-                span: item.as_span(),
-                path: config.map(|c| c.path()),
-            },
+            span: Span::from_pest(item.as_span(), config.map(|c| c.path())),
         },
         Rule::expr => check!(
             Expression::parse_from_pair(item, config),
@@ -1299,10 +1197,7 @@ fn parse_array_elems(elems: Pair<Rule>, config: Option<&BuildConfig>) -> Compile
     let mut errors = Vec::new();
 
     let path = config.map(|cfg| cfg.path());
-    let span = Span {
-        span: elems.as_span(),
-        path: path.clone(),
-    };
+    let span = Span::from_pest(elems.as_span(), path.clone());
 
     let mut elem_iter = elems.into_inner();
     let first_elem = elem_iter.next().unwrap();
@@ -1314,7 +1209,7 @@ fn parse_array_elems(elems: Pair<Rule>, config: Option<&BuildConfig>) -> Compile
                 .map(|(value, span)| Expression::Literal { value, span })
                 .unwrap_or_else(&mut warnings, &mut errors, || Expression::Tuple {
                     fields: vec![],
-                    span: Span { span, path },
+                    span: Span::from_pest(span, path),
                 });
 
             // This is a constant integer expression we need to parse now into a count.  Currently
@@ -1338,10 +1233,7 @@ fn parse_array_elems(elems: Pair<Rule>, config: Option<&BuildConfig>) -> Compile
                 Expression::parse_from_pair(first_elem, config),
                 Expression::Tuple {
                     fields: vec![],
-                    span: Span {
-                        span,
-                        path: path.clone()
-                    }
+                    span: Span::from_pest(span, path.clone()),
                 },
                 warnings,
                 errors
@@ -1352,10 +1244,7 @@ fn parse_array_elems(elems: Pair<Rule>, config: Option<&BuildConfig>) -> Compile
                     Expression::parse_from_pair(pair, config),
                     Expression::Tuple {
                         fields: vec![],
-                        span: Span {
-                            span,
-                            path: path.clone()
-                        }
+                        span: Span::from_pest(span, path.clone()),
                     },
                     warnings,
                     errors
@@ -1392,20 +1281,14 @@ fn parse_op(op: Pair<Rule>, config: Option<&BuildConfig>) -> CompileResult<Op> {
         a => {
             errors.push(CompileError::ExpectedOp {
                 op: a.to_string(),
-                span: Span {
-                    span: op.as_span(),
-                    path,
-                },
+                span: Span::from_pest(op.as_span(), path),
             });
             return err(Vec::new(), errors);
         }
     };
     ok(
         Op {
-            span: Span {
-                span: op.as_span(),
-                path,
-            },
+            span: Span::from_pest(op.as_span(), path),
             op_variant,
         },
         Vec::new(),

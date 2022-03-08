@@ -773,10 +773,7 @@ impl VirtualOp {
                     *offset_map
                         .get(&(i.value as u64))
                         .expect("new offset should be valid") as u64,
-                    crate::span::Span {
-                        span: pest::Span::new(" ".into(), 0, 0).unwrap(),
-                        path: None,
-                    },
+                    crate::span::Span::new(" ".into(), 0, 0, None).unwrap(),
                 )
                 .unwrap(),
             ),
@@ -787,10 +784,7 @@ impl VirtualOp {
                     *offset_map
                         .get(&(i.value as u64))
                         .expect("new offset should be valid") as u64,
-                    crate::span::Span {
-                        span: pest::Span::new(" ".into(), 0, 0).unwrap(),
-                        path: None,
-                    },
+                    crate::span::Span::new(" ".into(), 0, 0, None).unwrap(),
                 )
                 .unwrap(),
             ),

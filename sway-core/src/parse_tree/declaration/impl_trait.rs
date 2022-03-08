@@ -43,10 +43,7 @@ impl ImplTrait {
         let path = config.map(|c| c.path());
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
-        let block_span = Span {
-            span: pair.as_span(),
-            path: path.clone(),
-        };
+        let block_span = Span::from_pest(pair.as_span(), path.clone());
         let mut iter = pair.into_inner();
         let impl_keyword = iter.next().unwrap();
         assert_eq!(impl_keyword.as_str(), "impl");
@@ -65,10 +62,10 @@ impl ImplTrait {
         };
 
         let type_implementing_for_pair = iter.next().expect("guaranteed by grammar");
-        let type_implementing_for_span = Span {
-            span: type_implementing_for_pair.as_span(),
-            path: path.clone(),
-        };
+        let type_implementing_for_span = Span::from_pest(
+            type_implementing_for_pair.as_span(),
+            path.clone(),
+        );
         let type_implementing_for = check!(
             TypeInfo::parse_from_pair(type_implementing_for_pair, config),
             return err(warnings, errors),
@@ -85,10 +82,7 @@ impl ImplTrait {
         };
 
         let type_arguments_span = match type_params_pair {
-            Some(ref x) => Span {
-                span: x.as_span(),
-                path,
-            },
+            Some(ref x) => Span::from_pest(x.as_span(), path),
             None => trait_name.span(),
         };
         let type_arguments = TypeParameter::parse_from_type_params_and_where_clause(
@@ -133,10 +127,7 @@ impl ImplSelf {
         let path = config.map(|c| c.path());
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
-        let block_span = Span {
-            span: pair.as_span(),
-            path: path.clone(),
-        };
+        let block_span = Span::from_pest(pair.as_span(), path.clone());
         let mut iter = pair.into_inner();
         let impl_keyword = iter.next().unwrap();
         assert_eq!(impl_keyword.as_str(), "impl");
@@ -147,10 +138,7 @@ impl ImplSelf {
             None
         };
         let type_pair = iter.next().unwrap();
-        let type_name_span = Span {
-            span: type_pair.as_span(),
-            path: path.clone(),
-        };
+        let type_name_span = Span::from_pest(type_pair.as_span(), path.clone());
 
         let type_implementing_for = check!(
             TypeInfo::parse_from_pair(type_pair, config),
@@ -164,10 +152,7 @@ impl ImplSelf {
             _ => None,
         };
         let type_arguments_span = match type_params_pair {
-            Some(ref x) => Span {
-                span: x.as_span(),
-                path,
-            },
+            Some(ref x) => Span::from_pest(x.as_span(), path),
             None => type_name_span.clone(),
         };
         let type_arguments = TypeParameter::parse_from_type_params_and_where_clause(

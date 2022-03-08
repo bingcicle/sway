@@ -50,15 +50,12 @@ pub(crate) fn convert_subfield_expression_to_asm(
     // of that address
     // step 1
     // TODO(static span): str should be ident below
-    let span = sway_types::span::Span {
-        span: pest::Span::new(
-            "TODO(static span): use Idents instead of Strings".into(),
-            0,
-            0,
-        )
-        .unwrap(),
-        path: None,
-    };
+    let span = sway_types::span::Span::new(
+        "TODO(static span): use Idents instead of Strings".into(),
+        0,
+        0,
+        None,
+    ).unwrap();
 
     let fields_for_layout = match look_up_type_id(resolved_type_of_parent) {
         TypeInfo::Struct { fields, .. } => fields
@@ -104,10 +101,12 @@ pub(crate) fn convert_subfield_expression_to_asm(
             "Accessing a subfield that is not no the struct would be caught during type checking",
         );
 
-    let span = sway_types::span::Span {
-        span: pest::Span::new("TODO(static span): use span_for_this_field".into(), 0, 0).unwrap(),
-        path: None,
-    };
+    let span = sway_types::span::Span::new(
+        "TODO(static span): use span_for_this_field".into(),
+        0,
+        0,
+        None,
+    ).unwrap();
     // step 3
     // if this is a copy type (primitives that fit in a word), copy it into the register.
     // Otherwise, load the pointer to the field into the register

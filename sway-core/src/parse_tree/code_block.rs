@@ -25,10 +25,7 @@ impl CodeBlock {
         let path = config.map(|c| c.path());
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
-        let whole_block_span = span::Span {
-            span: block.as_span(),
-            path: path.clone(),
-        };
+        let whole_block_span = span::Span::from_pest(block.as_span(), path.clone());
         let block_inner = block.into_inner();
         let mut contents = Vec::new();
         for pair in block_inner {
@@ -42,10 +39,7 @@ impl CodeBlock {
                 .into_iter()
                 .map(|content| AstNode {
                     content: AstNodeContent::Declaration(content),
-                    span: span::Span {
-                        span: pair.as_span(),
-                        path: path.clone(),
-                    },
+                    span: span::Span::from_pest(pair.as_span(), path.clone()),
                 })
                 .collect::<Vec<_>>(),
                 Rule::expr_statement => {
@@ -60,10 +54,7 @@ impl CodeBlock {
                     );
                     vec![AstNode {
                         content: AstNodeContent::Expression(evaluated_node),
-                        span: span::Span {
-                            span: pair.as_span(),
-                            path: path.clone(),
-                        },
+                        span: span::Span::from_pest(pair.as_span(), path.clone()),
                     }]
                 }
                 Rule::return_statement => {
@@ -75,10 +66,7 @@ impl CodeBlock {
                     );
                     vec![AstNode {
                         content: AstNodeContent::ReturnStatement(evaluated_node),
-                        span: span::Span {
-                            span: pair.as_span(),
-                            path: path.clone(),
-                        },
+                        span: span::Span::from_pest(pair.as_span(), path.clone()),
                     }]
                 }
                 Rule::expr => {
@@ -102,20 +90,14 @@ impl CodeBlock {
                     );
                     vec![AstNode {
                         content: AstNodeContent::WhileLoop(res),
-                        span: span::Span {
-                            span: pair.as_span(),
-                            path: path.clone(),
-                        },
+                        span: span::Span::from_pest(pair.as_span(), path.clone()),
                     }]
                 }
                 a => {
                     println!("In code block parsing: {:?} {:?}", a, pair.as_str());
                     errors.push(CompileError::UnimplementedRule(
                         a,
-                        span::Span {
-                            span: pair.as_span(),
-                            path: path.clone(),
-                        },
+                        span::Span::from_pest(pair.as_span(), path.clone()),
                     ));
                     continue;
                 }

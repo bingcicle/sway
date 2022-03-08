@@ -7,7 +7,10 @@
 // But this is not ideal and needs to be refactored:
 // - AsmNamespace is tied to data structures from other stages like Ident and Literal.
 
-use std::collections::HashMap;
+use std::{
+    sync::Arc,
+    collections::HashMap,
+};
 
 use crate::{
     asm_generation::{
@@ -219,10 +222,7 @@ impl<'ir> AsmBuilder<'ir> {
     // guaranteed to be available span.
     fn empty_span() -> Span {
         let msg = "unknown source location";
-        Span {
-            span: pest::Span::new(std::sync::Arc::from(msg), 0, msg.len()).unwrap(),
-            path: None,
-        }
+        Span::new(Arc::from(msg), 0, msg.len(), None).unwrap()
     }
 
     fn add_locals(&mut self, function: Function) {
@@ -1757,15 +1757,12 @@ fn ir_constant_to_ast_literal(constant: &Constant) -> Literal {
         ConstantValue::Bool(b) => Literal::Boolean(*b),
         ConstantValue::Uint(n) => Literal::U64(*n),
         ConstantValue::B256(bs) => Literal::B256(*bs),
-        ConstantValue::String(_) => Literal::String(crate::span::Span {
-            span: pest::Span::new(
-                "STRINGS ARE UNIMPLEMENTED UNTIL WE REDO DATASECTION".into(),
-                0,
-                51,
-            )
-            .unwrap(),
-            path: None,
-        }),
+        ConstantValue::String(_) => Literal::String(crate::span::Span::new(
+            "STRINGS ARE UNIMPLEMENTED UNTIL WE REDO DATASECTION".into(),
+            0,
+            51,
+            None,
+        ).unwrap()),
         ConstantValue::Array(_) => unimplemented!(),
         ConstantValue::Struct(_) => unimplemented!(),
     }

@@ -1413,10 +1413,7 @@ fn ret_or_retd_value(
             errors,
         );
     }
-    let span = sway_types::span::Span {
-        span: pest::Span::new("TODO(static span)".into(), 0, 0).unwrap(),
-        path: None,
-    };
+    let span = sway_types::span::Span::new("TODO(static span)".into(), 0, 0, None).unwrap();
 
     let size_of_main_func_return_bytes = main_func_ret_ty.size_in_words(&span).expect(
         "TODO(static span): Internal error: Static spans will allow for a proper error here.",

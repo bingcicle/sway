@@ -73,10 +73,7 @@ impl CallPath {
         assert!(pair.as_rule() == Rule::call_path || pair.as_rule() == Rule::call_path_);
         let mut warnings = vec![];
         let mut errors = vec![];
-        let span = Span {
-            span: pair.as_span(),
-            path: config.map(|c| c.path()),
-        };
+        let span = Span::from_pest(pair.as_span(), config.map(|c| c.path()));
         if !(pair.as_rule() == Rule::call_path || pair.as_rule() == Rule::call_path_) {
             errors.push(CompileError::ParseError {
                 span,

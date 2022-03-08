@@ -1,5 +1,8 @@
-use std::collections::HashMap;
-use std::iter::FromIterator;
+use std::{
+    sync::Arc,
+    collections::HashMap,
+    iter::FromIterator,
+};
 
 use crate::{
     parse_tree::{AsmOp, AsmRegister, LazyOp, Literal, Visibility},
@@ -780,21 +783,14 @@ impl FnCompiler {
             // Firstly create the single-use callee by fudging an AST declaration.
             let callee_name = context.get_unique_name();
             let callee_name_len = callee_name.len();
-            let callee_ident = Ident::new(crate::span::Span {
-                span: pest::Span::new(std::sync::Arc::from(callee_name), 0, callee_name_len)
-                    .unwrap(),
-                path: None,
-            });
+            let callee_ident = Ident::new(crate::span::Span::new(Arc::from(callee_name), 0, callee_name_len, None).unwrap());
 
             let parameters = ast_args
                 .iter()
                 .map(|(name, expr)| TypedFunctionParameter {
                     name: name.clone(),
                     r#type: expr.return_type,
-                    type_span: crate::span::Span {
-                        span: pest::Span::new(" ".into(), 0, 0).unwrap(),
-                        path: None,
-                    },
+                    type_span: crate::span::Span::new(" ".into(), 0, 0, None).unwrap(),
                 })
                 .collect();
 
@@ -812,16 +808,10 @@ impl FnCompiler {
                 name: callee_ident,
                 body: callee_body,
                 parameters,
-                span: crate::span::Span {
-                    span: pest::Span::new(" ".into(), 0, 0).unwrap(),
-                    path: None,
-                },
+                span: crate::span::Span::new(" ".into(), 0, 0, None).unwrap(),
                 return_type,
                 type_parameters: Vec::new(),
-                return_type_span: crate::span::Span {
-                    span: pest::Span::new(" ".into(), 0, 0).unwrap(),
-                    path: None,
-                },
+                return_type_span: crate::span::Span::new(" ".into(), 0, 0, None).unwrap(),
                 visibility: Visibility::Private,
                 is_contract_call: false,
                 purity: Default::default(),
@@ -1519,10 +1509,7 @@ impl FnCompiler {
             )
             .collect();
         let returns = returns.as_ref().map(|(asm_reg, _)| {
-            Ident::new(Span {
-                span: pest::Span::new(asm_reg.name.as_str().into(), 0, asm_reg.name.len()).unwrap(),
-                path: None,
-            })
+            Ident::new(Span::new(asm_reg.name.as_str().into(), 0, asm_reg.name.len(), None).unwrap())
         });
         Ok(self.current_block.ins(context).asm_block(
             registers,
@@ -1586,10 +1573,7 @@ fn convert_resolved_typeid_no_span(
     ast_type: &TypeId,
 ) -> Result<Type, String> {
     let msg = "unknown source location";
-    let span = crate::span::Span {
-        span: pest::Span::new(std::sync::Arc::from(msg), 0, msg.len()).unwrap(),
-        path: None,
-    };
+    let span = crate::span::Span::new(Arc::from(msg), 0, msg.len(), None).unwrap();
     convert_resolved_typeid(context, struct_names, ast_type, &span)
 }
 

@@ -1888,8 +1888,6 @@ impl TypedExpression {
         new_type: TypeId,
     ) -> CompileResult<TypedExpression> {
         let mut errors = vec![];
-        let pest_span = span.clone().span;
-        let path = span.clone().path;
 
         // Parse and resolve a Numeric(span) based on new_type.
         let (val, new_integer_type) = match lit {
@@ -1900,8 +1898,7 @@ impl TypedExpression {
                             Literal::handle_parse_int_error(
                                 e,
                                 TypeInfo::UnsignedInteger(IntegerBits::Eight),
-                                pest_span,
-                                path,
+                                span.clone(),
                             )
                         }),
                         new_type,
@@ -1911,8 +1908,7 @@ impl TypedExpression {
                             Literal::handle_parse_int_error(
                                 e,
                                 TypeInfo::UnsignedInteger(IntegerBits::Sixteen),
-                                pest_span,
-                                path,
+                                span.clone(),
                             )
                         }),
                         new_type,
@@ -1922,8 +1918,7 @@ impl TypedExpression {
                             Literal::handle_parse_int_error(
                                 e,
                                 TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo),
-                                pest_span,
-                                path,
+                                span.clone(),
                             )
                         }),
                         new_type,
@@ -1933,8 +1928,7 @@ impl TypedExpression {
                             Literal::handle_parse_int_error(
                                 e,
                                 TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
-                                pest_span,
-                                path,
+                                span.clone(),
                             )
                         }),
                         new_type,
@@ -1945,8 +1939,7 @@ impl TypedExpression {
                         Literal::handle_parse_int_error(
                             e,
                             TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
-                            pest_span,
-                            path,
+                            span.clone(),
                         )
                     }),
                     insert_type(TypeInfo::UnsignedInteger(IntegerBits::SixtyFour)),

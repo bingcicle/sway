@@ -113,15 +113,12 @@ pub(crate) fn convert_reassignment_to_asm(
                     }
                 };
                 // TODO(static span) use spans instead of strings below
-                let span = sway_types::span::Span {
-                    span: pest::Span::new(
-                        "TODO(static span): use Idents instead of Strings".into(),
-                        0,
-                        0,
-                    )
-                    .unwrap(),
-                    path: None,
-                };
+                let span = sway_types::span::Span::new(
+                    "TODO(static span): use Idents instead of Strings".into(),
+                    0,
+                    0,
+                    None,
+                ).unwrap();
                 let fields_for_layout = fields
                     .iter()
                     .map(|OwnedTypedStructField { name, r#type, .. }| {

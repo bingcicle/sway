@@ -25,10 +25,7 @@ impl Reassignment {
         config: Option<&BuildConfig>,
     ) -> CompileResult<Reassignment> {
         let path = config.map(|c| c.path());
-        let span = Span {
-            span: pair.as_span(),
-            path: path.clone(),
-        };
+        let span = Span::from_pest(pair.as_span(), path.clone());
         let mut warnings = vec![];
         let mut errors = vec![];
         let mut iter = pair.into_inner();
@@ -47,10 +44,7 @@ impl Reassignment {
                     Expression::parse_from_pair(body.clone(), config),
                     Expression::Tuple {
                         fields: vec![],
-                        span: Span {
-                            span: body.as_span(),
-                            path
-                        }
+                        span: Span::from_pest(body.as_span(), path),
                     },
                     warnings,
                     errors
@@ -70,10 +64,7 @@ impl Reassignment {
                 let mut iter = variable_or_struct_reassignment.into_inner();
                 let lhs = iter.next().expect("guaranteed by grammar");
                 let rhs = iter.next().expect("guaranteed by grammar");
-                let rhs_span = Span {
-                    span: rhs.as_span(),
-                    path: path.clone(),
-                };
+                let rhs_span = Span::from_pest(rhs.as_span(), path.clone());
                 let body = check!(
                     Expression::parse_from_pair(rhs, config),
                     Expression::Tuple {
@@ -107,10 +98,7 @@ impl Reassignment {
                 for name_part in name_parts {
                     expr = Expression::SubfieldExpression {
                         prefix: Box::new(expr.clone()),
-                        span: Span {
-                            span: name_part.as_span(),
-                            path: path.clone(),
-                        },
+                        span: Span::from_pest(name_part.as_span(), path.clone()),
                         field_to_access: check!(
                             ident::parse_from_pair(name_part, config),
                             continue,
@@ -155,18 +143,12 @@ fn parse_subfield_path_ensure_only_var(
             );
             errors.push(CompileError::UnimplementedRule(
                 a,
-                Span {
-                    span: item.as_span(),
-                    path: path.clone(),
-                },
+                Span::from_pest(item.as_span(), path.clone()),
             ));
             // construct unit expression for error recovery
             let exp = Expression::Tuple {
                 fields: vec![],
-                span: Span {
-                    span: item.as_span(),
-                    path,
-                },
+                span: Span::from_pest(item.as_span(), path),
             };
             ok(exp, warnings, errors)
         }
@@ -201,17 +183,11 @@ fn parse_call_item_ensure_only_var(
                 warnings,
                 errors
             ),
-            span: Span {
-                span: item.as_span(),
-                path,
-            },
+            span: Span::from_pest(item.as_span(), path),
         },
         Rule::expr => {
             errors.push(CompileError::InvalidExpressionOnLhs {
-                span: Span {
-                    span: item.as_span(),
-                    path,
-                },
+                span: Span::from_pest(item.as_span(), path),
             });
             return err(warnings, errors);
         }

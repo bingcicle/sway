@@ -80,10 +80,7 @@ impl TypeInfo {
         match input.as_rule() {
             Rule::type_name | Rule::generic_type_param => (),
             _ => {
-                let span = Span {
-                    span: input.as_span(),
-                    path: config.map(|config| config.dir_of_code.clone()),
-                };
+                let span = Span::from_pest(input.as_span(), config.map(|config| config.dir_of_code.clone()));
                 let errors = vec![CompileError::Internal(
                     "Unexpected token while parsing type.",
                     span,
@@ -100,10 +97,7 @@ impl TypeInfo {
     ) -> CompileResult<Self> {
         let mut warnings = vec![];
         let mut errors = vec![];
-        let span = Span {
-            span: input.as_span(),
-            path: config.map(|config| config.dir_of_code.clone()),
-        };
+        let span = Span::from_pest(input.as_span(), config.map(|config| config.dir_of_code.clone()));
         let type_info = match input.as_rule() {
             Rule::str_type => {
                 check!(
