@@ -18,6 +18,7 @@ pub use expression::*;
 pub(crate) use include_statement::IncludeStatement;
 pub use literal::Literal;
 pub use return_statement::*;
-pub use use_statement::{ImportType, UseStatement};
+//pub use use_statement::{ImportType, UseStatement};
+pub(crate) use use_statement::item_use_parse_from_pair;
 pub use visibility::Visibility;
 pub use while_loop::WhileLoop;

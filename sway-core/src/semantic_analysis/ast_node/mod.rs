@@ -8,6 +8,7 @@ use crate::{
     semantic_analysis::{ast_node::declaration::insert_type_parameters, *},
     type_engine::*,
     AstNode, AstNodeContent, Ident, ReturnStatement,
+    new_parser_compat::ident_from,
 };
 
 use sway_types::span::{join_spans, Span};
@@ -168,21 +169,62 @@ impl TypedAstNode {
 
         let node = TypedAstNode {
             content: match node.content.clone() {
-                AstNodeContent::UseStatement(a) => {
-                    let from_module = if a.is_absolute {
+                AstNodeContent::UseStatement(ref item_use) => {
+                    let from_module = if item_use.root_import.is_some() {
                         Some(crate_namespace)
                     } else {
                         None
                     };
-                    let mut res = match a.import_type {
-                        ImportType::Star => namespace.star_import(from_module, a.call_path),
-                        ImportType::SelfImport => {
-                            namespace.self_import(from_module, a.call_path, a.alias)
+                    fn do_import(
+                        namespace: NamespaceRef,
+                        from_module: &Option<NamespaceRef>,
+                        mut path: Vec<Ident>,
+                        tree: &new_parser_again::UseTree,
+                    ) -> CompileResult<()> {
+                        match tree {
+                            new_parser_again::UseTree::Group { imports } => {
+                                let mut warnings = Vec::new();
+                                let mut errors = Vec::new();
+                                for tree in imports.get() {
+                                    let res = do_import(namespace, from_module, path.clone(), tree);
+                                    warnings.extend(res.warnings);
+                                    errors.extend(res.errors);
+                                }
+                                ok((), warnings, errors)
+                            },
+                            new_parser_again::UseTree::Name { name } => {
+                                if name.as_str() == "self" {
+                                    namespace.self_import(*from_module, path.clone(), None)
+                                } else {
+                                    namespace.item_import(*from_module, path.clone(), &ident_from(name), None)
+                                }
+                            },
+                            new_parser_again::UseTree::Rename { name, alias, .. } => {
+                                if name.as_str() == "self" {
+                                    namespace.self_import(
+                                        *from_module,
+                                        path.clone(),
+                                        Some(ident_from(alias)),
+                                    )
+                                } else {
+                                    namespace.item_import(
+                                        *from_module,
+                                        path.clone(),
+                                        &ident_from(name),
+                                        Some(ident_from(alias)),
+                                    )
+                                }
+                            },
+                            new_parser_again::UseTree::Glob { .. } => {
+                                namespace.star_import(*from_module, path.clone())
+                            },
+                            new_parser_again::UseTree::Path { prefix, suffix, .. } => {
+                                path.push(ident_from(prefix));
+                                do_import(namespace, from_module, path, suffix)
+                            },
                         }
-                        ImportType::Item(s) => {
-                            namespace.item_import(from_module, a.call_path, &s, a.alias)
-                        }
-                    };
+                    }
+                    let mut res = do_import(namespace, &from_module, vec![], &item_use.tree);
                     warnings.append(&mut res.warnings);
                     errors.append(&mut res.errors);
                     TypedAstNodeContent::SideEffect

@@ -16,6 +16,7 @@ pub mod semantic_analysis;
 pub mod source_map;
 mod style;
 pub mod type_engine;
+mod new_parser_compat;
 
 pub use crate::parser::{Rule, SwayParser};
 use crate::{
@@ -36,7 +37,7 @@ pub use semantic_analysis::{
     TypedDeclaration, TypedFunctionDeclaration, TypedParseTree,
 };
 pub mod types;
-pub use crate::parse_tree::{Declaration, Expression, UseStatement, WhileLoop, *};
+pub use crate::parse_tree::{Declaration, Expression, WhileLoop, *};
 
 pub use error::{CompileError, CompileResult, CompileWarning};
 use sway_types::{ident::Ident, span};
@@ -77,7 +78,7 @@ pub struct AstNode {
 #[derive(Debug, Clone)]
 pub enum AstNodeContent {
     /// A statement of the form `use foo::bar;` or `use ::foo::bar;`
-    UseStatement(UseStatement),
+    UseStatement(new_parser_again::ItemUse),
     /// A statement of the form `return foo;`
     ReturnStatement(ReturnStatement),
     /// Any type of declaration, of which there are quite a few. See [Declaration] for more details
@@ -605,21 +606,14 @@ fn parse_root_from_pairs(
                     });
                 }
                 Rule::use_statement => {
-                    let stmt = check!(
-                        UseStatement::parse_from_pair(pair.clone(), config),
-                        continue,
-                        warnings,
-                        errors
-                    );
-                    for entry in stmt {
-                        parse_tree.push(AstNode {
-                            content: AstNodeContent::UseStatement(entry.clone()),
-                            span: span::Span {
-                                span: pair.as_span(),
-                                path: path.clone(),
-                            },
-                        });
-                    }
+                    let item_use = parse_tree::item_use_parse_from_pair(pair.clone());
+                    parse_tree.push(AstNode {
+                        content: AstNodeContent::UseStatement(item_use),
+                        span: span::Span {
+                            span: pair.as_span(),
+                            path: path.clone(),
+                        },
+                    });
                 }
                 Rule::library_name => {
                     let lib_pair = pair.into_inner().next().unwrap();
