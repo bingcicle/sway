@@ -266,12 +266,7 @@ pub fn lex(src: &Arc<str>, start: usize, end: usize, path: Option<Arc<PathBuf>>)
                     } else {
                         Spacing::Alone
                     };
-                    let span = Span {
-                        src: src.clone(),
-                        start: index,
-                        end,
-                        path: path.clone(),
-                    };
+                    let span = Span::new(src.clone(), start, end, path.clone()).unwrap();
                     let punct = Punct {
                         kind: PunctKind::ForwardSlash,
                         spacing,
@@ -280,12 +275,7 @@ pub fn lex(src: &Arc<str>, start: usize, end: usize, path: Option<Arc<PathBuf>>)
                     token_trees.push(TokenTree::Punct(punct));
                 },
                 None => {
-                    let span = Span {
-                        src: src.clone(),
-                        start: index,
-                        end: src.len(),
-                        path: path.clone(),
-                    };
+                    let span = Span::new(src.clone(), start, end, path.clone()).unwrap();
                     let punct = Punct {
                         kind: PunctKind::ForwardSlash,
                         spacing: Spacing::Alone,
@@ -504,12 +494,7 @@ pub fn lex(src: &Arc<str>, start: usize, end: usize, path: Option<Arc<PathBuf>>)
                 (big_uint, end_opt)
             };
             let end = end_opt.unwrap_or_else(|| src.len());
-            let span = Span {
-                src: src.clone(),
-                start: index,
-                end,
-                path: path.clone(),
-            };
+            let span = Span::new(src.clone(), index, end, path.clone()).unwrap();
             let ty_opt = match char_indices.peek() {
                 Some((_, c)) if c.is_xid_continue() => {
                     let (suffix_start_position, c) = char_indices.next().unwrap();
@@ -683,12 +668,7 @@ fn span_until(src: &Arc<str>, start: usize, char_indices: &mut CharIndices, path
         Some(&(end, _)) => end,
         None => src.len(),
     };
-    Span {
-        src: src.clone(),
-        start,
-        end,
-        path: path.clone(),
-    }
+    Span::new(src.clone(), start, end, path.clone()).unwrap()
 }
 
 impl TokenStream {

@@ -2,13 +2,24 @@ use crate::priv_prelude::*;
 
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Span {
-    pub(crate) src: Arc<str>,
-    pub(crate) start: usize,
-    pub(crate) end: usize,
-    pub(crate) path: Option<Arc<PathBuf>>,
+    src: Arc<str>,
+    start: usize,
+    end: usize,
+    path: Option<Arc<PathBuf>>,
 }
 
 impl Span {
+    pub fn new(src: Arc<str>, start: usize, end: usize, path: Option<Arc<PathBuf>>) -> Option<Span> {
+        if src.get(start..end).is_none() {
+            return None;
+        }
+        Some(Span {
+            src,
+            start,
+            end,
+            path,
+        })
+    }
     /*
     pub fn new(src: Arc<str>) -> Span {
         let end = src.len();
