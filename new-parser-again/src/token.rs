@@ -166,10 +166,36 @@ impl CharExt for char {
     }
 }
 
-type CharIndices<'a> = std::iter::Peekable<std::str::CharIndices<'a>>;
+struct CharIndicesInner<'a> {
+    src: &'a str,
+    position: usize,
+}
 
-pub fn lex(src: &Arc<str>) -> Result<TokenStream, LexError> {
-    let mut char_indices = src.char_indices().peekable();
+impl<'a> Iterator for CharIndicesInner<'a> {
+    type Item = (usize, char);
+
+    fn next(&mut self) -> Option<(usize, char)> {
+        let mut char_indices = self.src[self.position..].char_indices();
+        let c = match char_indices.next() {
+            Some((_, c)) => c,
+            None => return None,
+        };
+        let ret = (self.position, c);
+        match char_indices.next() {
+            Some((char_width, _)) => self.position += char_width,
+            None => self.position = self.src.len(),
+        };
+        Some(ret)
+    }
+}
+
+type CharIndices<'a> = std::iter::Peekable<CharIndicesInner<'a>>;
+
+pub fn lex(src: &Arc<str>, start: usize, end: usize) -> Result<TokenStream, LexError> {
+    let mut char_indices = CharIndicesInner {
+        src: &src[..end],
+        position: start,
+    }.peekable();
     let mut parent_token_trees = Vec::new();
     let mut token_trees = Vec::new();
     loop {

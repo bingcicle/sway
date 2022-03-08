@@ -95,7 +95,7 @@ fn parse_all_in_dir(dir: &Path) -> bool {
             Arc::from(src)
         };
         println!("lexing: {}", path.display());
-        let lex_res = new_parser_again::lex(&src);
+        let lex_res = new_parser_again::lex(&src, 0, src.len());
         let token_stream = match lex_res {
             Ok(token_stream) => token_stream,
             Err(error) => {

@@ -31,6 +31,18 @@ impl Span {
             end: rhs.end,
         }
     }
+
+    pub fn src(&self) -> &Arc<str> {
+        &self.src
+    }
+
+    pub fn start(&self) -> usize {
+        self.start
+    }
+
+    pub fn end(&self) -> usize {
+        self.end
+    }
 }
 
 impl fmt::Debug for Span {
