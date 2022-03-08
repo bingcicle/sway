@@ -1,7 +1,12 @@
-use std::{path::PathBuf, sync::Arc, borrow::Cow, cmp};
+use std::{
+    cmp, fmt,
+    borrow::Cow,
+    path::PathBuf,
+    sync::Arc,
+};
 
 /// Represents a span of the source code in a specific file.
-#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+#[derive(Clone, Eq, PartialEq, Hash)]
 pub struct Span {
     // The original source code.
     src: Arc<str>,
@@ -133,5 +138,18 @@ pub fn join_spans(s1: Span, s2: Span) -> Span {
         start: cmp::min(s1.start, s2.start),
         end: cmp::max(s1.end, s2.end),
         path: s1.path,
+    }
+}
+
+impl fmt::Debug for Span {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        fmt
+        .debug_struct("Span")
+        .field("src (ptr)", &self.src.as_ptr())
+        .field("path", &self.path)
+        .field("start", &self.start)
+        .field("end", &self.end)
+        .field("as_str()", &self.as_str())
+        .finish()
     }
 }
