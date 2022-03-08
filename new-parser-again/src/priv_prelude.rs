@@ -3,6 +3,7 @@ pub use {
         mem, fmt,
         marker::PhantomData,
         ops::ControlFlow,
+        path::PathBuf,
         str::FromStr,
         sync::Arc,
     },

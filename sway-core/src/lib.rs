@@ -586,7 +586,7 @@ fn parse_root_from_pairs(
                     });
                 }
                 Rule::use_statement => {
-                    let item_use = parse_tree::item_use_parse_from_pair(pair.clone());
+                    let item_use = parse_tree::item_use_parse_from_pair(pair.clone(), path.clone());
                     parse_tree.push(AstNode {
                         content: AstNodeContent::UseStatement(item_use),
                         span: span::Span::from_pest(pair.as_span(), path.clone()),

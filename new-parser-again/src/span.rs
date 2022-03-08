@@ -5,6 +5,7 @@ pub struct Span {
     pub(crate) src: Arc<str>,
     pub(crate) start: usize,
     pub(crate) end: usize,
+    pub(crate) path: Option<Arc<PathBuf>>,
 }
 
 impl Span {
@@ -25,10 +26,12 @@ impl Span {
 
     pub fn join(lhs: &Span, rhs: &Span) -> Span {
         assert!(Arc::ptr_eq(&lhs.src, &rhs.src));
+        assert_eq!(lhs.path, rhs.path);
         Span {
             src: lhs.src.clone(),
             start: lhs.start,
             end: rhs.end,
+            path: lhs.path.clone(),
         }
     }
 

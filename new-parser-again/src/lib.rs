@@ -33,13 +33,16 @@ pub use crate::{
     },
 };
 
-use std::sync::Arc;
+use std::{
+    path::PathBuf,
+    sync::Arc,
+};
 
-pub fn lex_and_parse<T>(src: &Arc<str>, start: usize, end: usize) -> T
+pub fn lex_and_parse<T>(src: &Arc<str>, start: usize, end: usize, path: Option<Arc<PathBuf>>) -> T
 where
     T: Parse,
 {
-    let token_stream = lex(src, start, end).unwrap();
+    let token_stream = lex(src, start, end, path).unwrap();
     let mut parser = Parser::new(&token_stream);
     let ret = parser.parse().unwrap();
     if !parser.is_empty() {

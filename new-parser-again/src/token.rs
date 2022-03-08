@@ -191,7 +191,7 @@ impl<'a> Iterator for CharIndicesInner<'a> {
 
 type CharIndices<'a> = std::iter::Peekable<CharIndicesInner<'a>>;
 
-pub fn lex(src: &Arc<str>, start: usize, end: usize) -> Result<TokenStream, LexError> {
+pub fn lex(src: &Arc<str>, start: usize, end: usize, path: Option<Arc<PathBuf>>) -> Result<TokenStream, LexError> {
     let mut char_indices = CharIndicesInner {
         src: &src[..end],
         position: start,
@@ -270,6 +270,7 @@ pub fn lex(src: &Arc<str>, start: usize, end: usize) -> Result<TokenStream, LexE
                         src: src.clone(),
                         start: index,
                         end,
+                        path: path.clone(),
                     };
                     let punct = Punct {
                         kind: PunctKind::ForwardSlash,
@@ -283,6 +284,7 @@ pub fn lex(src: &Arc<str>, start: usize, end: usize) -> Result<TokenStream, LexE
                         src: src.clone(),
                         start: index,
                         end: src.len(),
+                        path: path.clone(),
                     };
                     let punct = Punct {
                         kind: PunctKind::ForwardSlash,
@@ -305,7 +307,7 @@ pub fn lex(src: &Arc<str>, start: usize, end: usize) -> Result<TokenStream, LexE
                 }
                 let _ = char_indices.next();
             };
-            let span = span_until(src, index, &mut char_indices);
+            let span = span_until(src, index, &mut char_indices, &path);
             let ident = Ident { span };
             token_trees.push(TokenTree::Ident(ident));
             continue;
@@ -357,7 +359,7 @@ pub fn lex(src: &Arc<str>, start: usize, end: usize) -> Result<TokenStream, LexE
                 };
                 match next_character {
                     '\\' => {
-                        let parsed_character = match parse_escape_code(src, &mut char_indices) {
+                        let parsed_character = match parse_escape_code(src, &mut char_indices, &path) {
                             Ok(parsed_character) => parsed_character,
                             Err(None) => {
                                 return Err(LexError::UnclosedStringLiteral {
@@ -374,7 +376,7 @@ pub fn lex(src: &Arc<str>, start: usize, end: usize) -> Result<TokenStream, LexE
                     },
                 }
             }
-            let span = span_until(src, index, &mut char_indices);
+            let span = span_until(src, index, &mut char_indices, &path);
             let literal = Literal::String(LitString { span, parsed });
             token_trees.push(TokenTree::Literal(literal));
             continue;
@@ -389,7 +391,7 @@ pub fn lex(src: &Arc<str>, start: usize, end: usize) -> Result<TokenStream, LexE
                 },
             };
             let parsed = if next_character == '\\' {
-                match parse_escape_code(src, &mut char_indices) {
+                match parse_escape_code(src, &mut char_indices, &path) {
                     Ok(parsed) => parsed,
                     Err(None) => {
                         return Err(LexError::UnclosedCharLiteral {
@@ -414,7 +416,7 @@ pub fn lex(src: &Arc<str>, start: usize, end: usize) -> Result<TokenStream, LexE
                     })
                 },
             }
-            let span = span_until(src, index, &mut char_indices);
+            let span = span_until(src, index, &mut char_indices, &path);
             let literal = Literal::Char(LitChar { span, parsed });
             token_trees.push(TokenTree::Literal(literal));
             continue;
@@ -506,6 +508,7 @@ pub fn lex(src: &Arc<str>, start: usize, end: usize) -> Result<TokenStream, LexE
                 src: src.clone(),
                 start: index,
                 end,
+                path: path.clone(),
             };
             let ty_opt = match char_indices.peek() {
                 Some((_, c)) if c.is_xid_continue() => {
@@ -536,7 +539,7 @@ pub fn lex(src: &Arc<str>, start: usize, end: usize) -> Result<TokenStream, LexE
                             });
                         },
                     };
-                    let span = span_until(src, suffix_start_position, &mut char_indices);
+                    let span = span_until(src, suffix_start_position, &mut char_indices, &path);
                     Some((ty, span))
                 },
                 _ => None,
@@ -552,7 +555,7 @@ pub fn lex(src: &Arc<str>, start: usize, end: usize) -> Result<TokenStream, LexE
                 },
                 _ => Spacing::Alone,
             };
-            let span = span_until(src, index, &mut char_indices);
+            let span = span_until(src, index, &mut char_indices, &path);
             let punct = Punct {
                 kind,
                 spacing,
@@ -576,7 +579,7 @@ pub fn lex(src: &Arc<str>, start: usize, end: usize) -> Result<TokenStream, LexE
     Ok(token_stream)
 }
 
-fn parse_escape_code(src: &Arc<str>, char_indices: &mut CharIndices) -> Result<char, Option<LexError>> {
+fn parse_escape_code(src: &Arc<str>, char_indices: &mut CharIndices, path: &Option<Arc<PathBuf>>) -> Result<char, Option<LexError>> {
     match char_indices.next() {
         None => Err(None),
         Some((_, '"')) => Ok('"'),
@@ -594,7 +597,7 @@ fn parse_escape_code(src: &Arc<str>, char_indices: &mut CharIndices) -> Result<c
             let (high, low) = match (high.to_digit(16), low.to_digit(16)) {
                 (Some(high), Some(low)) => (high, low),
                 _ => {
-                    let span = span_until(src, index, char_indices);
+                    let span = span_until(src, index, char_indices, path);
                     return Err(Some(LexError::InvalidHexEscape { span }));
                 },
             };
@@ -639,7 +642,7 @@ fn parse_escape_code(src: &Arc<str>, char_indices: &mut CharIndices) -> Result<c
             }
             let parsed_character = match char::from_u32(char_value) {
                 None => {
-                    let span = span_until(src, index, char_indices);
+                    let span = span_until(src, index, char_indices, path);
                     return Err(Some(LexError::UnicodeEscapeInvalidCharValue { span }));
                 },
                 Some(parsed_character) => parsed_character,
@@ -675,7 +678,7 @@ fn parse_digits(big_uint: &mut BigUint, char_indices: &mut CharIndices, radix: u
     }
 }
 
-fn span_until(src: &Arc<str>, start: usize, char_indices: &mut CharIndices) -> Span {
+fn span_until(src: &Arc<str>, start: usize, char_indices: &mut CharIndices, path: &Option<Arc<PathBuf>>) -> Span {
     let end = match char_indices.peek() {
         Some(&(end, _)) => end,
         None => src.len(),
@@ -684,6 +687,7 @@ fn span_until(src: &Arc<str>, start: usize, char_indices: &mut CharIndices) -> S
         src: src.clone(),
         start,
         end,
+        path: path.clone(),
     }
 }
 
