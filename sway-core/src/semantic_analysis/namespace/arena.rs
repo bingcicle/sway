@@ -7,7 +7,7 @@ use crate::{
 use generational_arena::{Arena, Index};
 use lazy_static::lazy_static;
 use std::{collections::VecDeque, sync::RwLock};
-use sway_types::{join_spans, Ident, Span};
+use sway_types::{Ident, Span};
 pub type NamespaceRef = Index;
 
 pub trait NamespaceWrapper {
@@ -407,7 +407,7 @@ impl NamespaceWrapper for NamespaceRef {
             None => {
                 errors.push(CompileError::ModuleNotFound {
                     span: path.iter().fold(path[0].span().clone(), |acc, this_one| {
-                        join_spans(acc, this_one.span().clone())
+                        Span::join(acc, this_one.span().clone())
                     }),
                     name: path
                         .iter()
@@ -429,7 +429,7 @@ impl NamespaceWrapper for NamespaceRef {
                 _ => {
                     errors.push(CompileError::ModuleNotFound {
                         span: path.iter().fold(path[0].span().clone(), |acc, this_one| {
-                            join_spans(acc, this_one.span().clone())
+                            Span::join(acc, this_one.span().clone())
                         }),
                         name: path
                             .iter()

@@ -13,7 +13,7 @@ use crate::{
     Ident, TypeParameter,
 };
 
-use sway_types::{join_spans, span::Span, Function, Property};
+use sway_types::{Span, Function, Property};
 
 use sha2::{Digest, Sha256};
 
@@ -357,7 +357,7 @@ impl TypedFunctionDeclaration {
         if !self.parameters.is_empty() {
             self.parameters.iter().fold(
                 self.parameters[0].name.span().clone(),
-                |acc, TypedFunctionParameter { type_span, .. }| join_spans(acc, type_span.clone()),
+                |acc, TypedFunctionParameter { type_span, .. }| Span::join(acc, type_span.clone()),
             )
         } else {
             self.name.span().clone()

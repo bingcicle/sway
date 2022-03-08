@@ -7,7 +7,7 @@ use crate::{
     AstNode, AstNodeContent, CodeBlock, Declaration, VariableDeclaration,
 };
 
-use sway_types::{ident::Ident, join_spans, Span};
+use sway_types::{ident::Ident, Span};
 
 use either::Either;
 use pest;
@@ -1037,7 +1037,7 @@ fn convert_unary_to_fn_calls(
     while let Some((op_span, unary_op)) = unary_stack.pop() {
         expr = unary_op.to_fn_application(
             expr.clone(),
-            join_spans(op_span.clone(), expr.span()),
+            Span::join(op_span.clone(), expr.span()),
             op_span,
         );
     }
@@ -1459,7 +1459,7 @@ fn arrange_by_order_of_operations(
         let rhs = rhs.unwrap();
 
         // See above about special casing `&&` and `||`.
-        let span = join_spans(join_spans(lhs.span(), op.span.clone()), rhs.span());
+        let span = Span::join(Span::join(lhs.span(), op.span.clone()), rhs.span());
         expression_stack.push(match op.op_variant {
             OpVariant::And | OpVariant::Or => Expression::LazyOperator {
                 op: LazyOp::from(op.op_variant),
@@ -1593,7 +1593,7 @@ pub fn desugar_match_expression(
         // 2a. Assemble the conditional that goes in the if primary expression.
         let mut conditional = None;
         for (left_req, right_req) in match_req_map.iter() {
-            let joined_span = join_spans(left_req.clone().span(), right_req.clone().span());
+            let joined_span = Span::join(left_req.clone().span(), right_req.clone().span());
             let condition = Expression::core_ops_eq(
                 vec![left_req.to_owned(), right_req.to_owned()],
                 joined_span,
@@ -1607,7 +1607,7 @@ pub fn desugar_match_expression(
                         op: crate::LazyOp::And,
                         lhs: Box::new(the_conditional.clone()),
                         rhs: Box::new(condition.clone()),
-                        span: join_spans(the_conditional.span(), condition.span()),
+                        span: Span::join(the_conditional.span(), condition.span()),
                     });
                 }
             }
@@ -1624,14 +1624,14 @@ pub fn desugar_match_expression(
                 type_ascription: TypeInfo::Unknown,
                 type_ascription_span: None,
             });
-            let new_span = join_spans(left_impl.span().clone(), right_impl.span());
+            let new_span = Span::join(left_impl.span().clone(), right_impl.span());
             code_block_stmts.push(AstNode {
                 content: AstNodeContent::Declaration(decl),
                 span: new_span.clone(),
             });
             code_block_stmts_span = match code_block_stmts_span {
                 None => Some(new_span),
-                Some(old_span) => Some(join_spans(old_span, new_span)),
+                Some(old_span) => Some(Span::join(old_span, new_span)),
             };
         }
         match result {
@@ -1647,7 +1647,7 @@ pub fn desugar_match_expression(
                 code_block_stmts.append(&mut contents);
                 code_block_stmts_span = match code_block_stmts_span {
                     None => Some(whole_block_span.clone()),
-                    Some(old_span) => Some(join_spans(old_span, whole_block_span.clone())),
+                    Some(old_span) => Some(Span::join(old_span, whole_block_span.clone())),
                 };
             }
             result => {
@@ -1657,7 +1657,7 @@ pub fn desugar_match_expression(
                 });
                 code_block_stmts_span = match code_block_stmts_span {
                     None => Some(result.span()),
-                    Some(old_span) => Some(join_spans(old_span, result.span())),
+                    Some(old_span) => Some(Span::join(old_span, result.span())),
                 };
             }
         }
@@ -1682,7 +1682,7 @@ pub fn desugar_match_expression(
                         condition: Box::new(conditional.clone()),
                         then: Box::new(code_block.clone()),
                         r#else: None,
-                        span: join_spans(conditional.span(), code_block.span()),
+                        span: Span::join(conditional.span(), code_block.span()),
                     }),
                 };
             }
@@ -1702,13 +1702,13 @@ pub fn desugar_match_expression(
                         }),
                         then: Box::new(code_block.clone()),
                         r#else: Some(Box::new(right.clone())),
-                        span: join_spans(code_block.clone().span(), right.clone().span()),
+                        span: Span::join(code_block.clone().span(), right.clone().span()),
                     }),
                     Some(the_conditional) => Some(Expression::IfExp {
                         condition: Box::new(the_conditional),
                         then: Box::new(code_block.clone()),
                         r#else: Some(Box::new(right.clone())),
-                        span: join_spans(code_block.clone().span(), right.clone().span()),
+                        span: Span::join(code_block.clone().span(), right.clone().span()),
                     }),
                 };
             }
@@ -1727,7 +1727,7 @@ pub fn desugar_match_expression(
                         r#else,
                         span: exp_span.clone(),
                     })),
-                    span: join_spans(code_block.clone().span(), exp_span),
+                    span: Span::join(code_block.clone().span(), exp_span),
                 });
             }
             Some(if_statement) => {

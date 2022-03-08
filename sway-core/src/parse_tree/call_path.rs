@@ -1,6 +1,6 @@
 use crate::{build_config::BuildConfig, error::*, parse_tree::ident, parser::Rule, Ident};
 
-use sway_types::span::{join_spans, Span};
+use sway_types::span::Span;
 
 use pest::iterators::Pair;
 
@@ -61,9 +61,9 @@ impl CallPath {
                 .prefixes
                 .iter()
                 .fold(self.prefixes[0].span().clone(), |acc, sp| {
-                    join_spans(acc, sp.span().clone())
+                    Span::join(acc, sp.span().clone())
                 });
-            join_spans(prefixes_span, self.suffix.span().clone())
+            Span::join(prefixes_span, self.suffix.span().clone())
         }
     }
     pub(crate) fn parse_from_pair(

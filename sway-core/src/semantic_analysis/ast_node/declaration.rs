@@ -1,7 +1,7 @@
 use super::{impl_trait::Mode, TypedCodeBlock, TypedExpression};
 use crate::{error::*, parse_tree::*, type_engine::*, Ident};
 
-use sway_types::{join_spans, span::Span, Property};
+use sway_types::{Span, Property};
 
 mod function;
 mod variable;
@@ -132,7 +132,7 @@ impl TypedDeclaration {
             EnumDeclaration(TypedEnumDeclaration { span, .. }) => span.clone(),
             Reassignment(TypedReassignment { lhs, .. }) => lhs
                 .iter()
-                .fold(lhs[0].span(), |acc, this| join_spans(acc, this.span())),
+                .fold(lhs[0].span(), |acc, this| Span::join(acc, this.span())),
             AbiDeclaration(TypedAbiDeclaration { span, .. }) => span.clone(),
             ImplTrait { span, .. } => span.clone(),
             ErrorRecovery | GenericTypeForFunctionScope { .. } => {

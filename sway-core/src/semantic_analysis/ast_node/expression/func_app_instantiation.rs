@@ -39,7 +39,7 @@ pub(crate) fn instantiate_function_application(
                     .get(0)
                     .map(|x| x.span())
                     .unwrap_or_else(|| name.span()),
-                |acc, arg| join_spans(acc, arg.span()),
+                |acc, arg| Span::join(acc, arg.span()),
             );
             errors.push(CompileError::TooManyArgumentsForFunction {
                 span: arguments_span,
@@ -54,7 +54,7 @@ pub(crate) fn instantiate_function_application(
                     .get(0)
                     .map(|x| x.span())
                     .unwrap_or_else(|| name.span()),
-                |acc, arg| join_spans(acc, arg.span()),
+                |acc, arg| Span::join(acc, arg.span()),
             );
             errors.push(CompileError::TooFewArgumentsForFunction {
                 span: arguments_span,

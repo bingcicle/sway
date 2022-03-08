@@ -11,7 +11,7 @@ use crate::{
     new_parser_compat::ident_from,
 };
 
-use sway_types::span::{join_spans, Span};
+use sway_types::span::Span;
 
 use std::sync::Arc;
 
@@ -1185,7 +1185,7 @@ fn type_check_trait_methods(
             if let TypeInfo::Custom { name, .. } = r#type {
                 let args_span = parameters.iter().fold(
                     parameters[0].name.span().clone(),
-                    |acc, FunctionParameter { name, .. }| join_spans(acc, name.span().clone()),
+                    |acc, FunctionParameter { name, .. }| Span::join(acc, name.span().clone()),
                 );
                 if type_parameters.iter().any(
                     |TypeParameter {
