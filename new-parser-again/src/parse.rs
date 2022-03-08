@@ -77,3 +77,19 @@ where
     }
 }
 
+impl Peek for Ident {
+    fn peek(peeker: Peeker<'_>) -> Option<Ident> {
+        peeker.peek_ident().ok().map(Ident::clone)
+    }
+}
+
+impl Parse for Ident {
+    fn parse(parser: &mut Parser) -> ParseResult<Ident> {
+        match parser.take() {
+            Some(ident) => Ok(ident),
+            None => Err(parser.emit_error("expected an identifier")),
+        }
+    }
+}
+
+

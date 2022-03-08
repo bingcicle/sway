@@ -1,25 +1,25 @@
 use crate::priv_prelude::*;
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash)]
 pub struct LitString {
     pub span: Span,
     pub parsed: String,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash)]
 pub struct LitChar {
     pub span: Span,
     pub parsed: char,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash)]
 pub struct LitInt {
     pub span: Span,
     pub parsed: BigUint,
     pub ty_opt: Option<(LitIntType, Span)>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash)]
 pub enum LitIntType {
     U8,
     U16,
@@ -31,7 +31,7 @@ pub enum LitIntType {
     I64,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash)]
 pub enum Literal {
     String(LitString),
     Char(LitChar),

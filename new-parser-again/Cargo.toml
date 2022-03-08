@@ -10,4 +10,5 @@ num-traits = "*"
 unicode-xid = "*"
 extension-trait = "*"
 walkdir = "*"
+sway-types = { version = "*", path = "../sway-types" }
 

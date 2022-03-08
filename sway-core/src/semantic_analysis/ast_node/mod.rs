@@ -8,7 +8,6 @@ use crate::{
     semantic_analysis::{ast_node::declaration::insert_type_parameters, *},
     type_engine::*,
     AstNode, AstNodeContent, Ident, ReturnStatement,
-    new_parser_compat::ident_from,
 };
 
 use sway_types::span::Span;
@@ -196,7 +195,7 @@ impl TypedAstNode {
                                 if name.as_str() == "self" {
                                     namespace.self_import(*from_module, path.clone(), None)
                                 } else {
-                                    namespace.item_import(*from_module, path.clone(), &ident_from(name), None)
+                                    namespace.item_import(*from_module, path.clone(), name, None)
                                 }
                             },
                             new_parser_again::UseTree::Rename { name, alias, .. } => {
@@ -204,14 +203,14 @@ impl TypedAstNode {
                                     namespace.self_import(
                                         *from_module,
                                         path.clone(),
-                                        Some(ident_from(alias)),
+                                        Some(alias.clone()),
                                     )
                                 } else {
                                     namespace.item_import(
                                         *from_module,
                                         path.clone(),
-                                        &ident_from(name),
-                                        Some(ident_from(alias)),
+                                        name,
+                                        Some(alias.clone()),
                                     )
                                 }
                             },
@@ -219,7 +218,7 @@ impl TypedAstNode {
                                 namespace.star_import(*from_module, path.clone())
                             },
                             new_parser_again::UseTree::Path { prefix, suffix, .. } => {
-                                path.push(ident_from(prefix));
+                                path.push(prefix.clone());
                                 do_import(namespace, from_module, path, suffix)
                             },
                         }

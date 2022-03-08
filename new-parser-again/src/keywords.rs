@@ -17,7 +17,7 @@ macro_rules! define_keyword (
             fn peek(peeker: Peeker<'_>) -> Option<$ty_name> {
                 let ident = peeker.peek_ident().ok()?;
                 if ident.as_str() == $keyword {
-                    Some($ty_name { span: ident.span() })
+                    Some($ty_name { span: ident.span().clone() })
                 } else {
                     None
                 }

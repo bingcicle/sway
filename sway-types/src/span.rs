@@ -6,7 +6,7 @@ use std::{
 };
 
 /// Represents a span of the source code in a specific file.
-#[derive(Clone, Eq, PartialEq, Hash)]
+#[derive(Clone, Eq, PartialEq, PartialOrd, Hash)]
 pub struct Span {
     // The original source code.
     src: Arc<str>,
@@ -118,26 +118,26 @@ impl Span {
             path: self.path,
         }
     }
-}
 
-/// This panics if the spans are not from the same file. This should
-/// only be used on spans that are actually next to each other.
-pub fn join_spans(s1: Span, s2: Span) -> Span {
-    // FIXME(canndrew): This is horrifying. Where did it come from and why is it needed?
-    if s1.as_str() == "core" {
-        return s2;
-    }
+    /// This panics if the spans are not from the same file. This should
+    /// only be used on spans that are actually next to each other.
+    pub fn join(s1: Span, s2: Span) -> Span {
+        // FIXME(canndrew): This is horrifying. Where did it come from and why is it needed?
+        if s1.as_str() == "core" {
+            return s2;
+        }
 
-    assert!(
-        Arc::ptr_eq(&s1.src, &s2.src) && s1.path == s2.path,
-        "Spans from different files cannot be joined.",
-    );
+        assert!(
+            Arc::ptr_eq(&s1.src, &s2.src) && s1.path == s2.path,
+            "Spans from different files cannot be joined.",
+        );
 
-    Span {
-        src: s1.src,
-        start: cmp::min(s1.start, s2.start),
-        end: cmp::max(s1.end, s2.end),
-        path: s1.path,
+        Span {
+            src: s1.src,
+            start: cmp::min(s1.start, s2.start),
+            end: cmp::max(s1.end, s2.end),
+            path: s1.path,
+        }
     }
 }
 

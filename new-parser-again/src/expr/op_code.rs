@@ -66,7 +66,7 @@ macro_rules! define_op_codes (
                         let $arg_name = parser.parse()?;
                     )*
                     Ok(Instruction::$op_name {
-                        token: $ty_name { span: ident.span() },
+                        token: $ty_name { span: ident.span().clone() },
                         $($arg_name,)*
                     })
                 },)*

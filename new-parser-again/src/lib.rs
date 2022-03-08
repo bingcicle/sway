@@ -1,6 +1,4 @@
 mod priv_prelude;
-mod span;
-mod ident;
 mod literal;
 mod token;
 pub mod parser;
@@ -20,8 +18,6 @@ pub mod statement;
 pub mod assignable;
 
 pub use crate::{
-    span::Span,
-    ident::Ident,
     token::lex,
     parser::Parser,
     parse::Parse,

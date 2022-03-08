@@ -7,9 +7,8 @@ pub use {
         str::FromStr,
         sync::Arc,
     },
+    sway_types::{Span, Ident},
     crate::{
-        span::Span,
-        ident::Ident,
         token::{
             Spacing, PunctKind, Punct, Group, Delimiter, TokenTree, TokenStream,
         },

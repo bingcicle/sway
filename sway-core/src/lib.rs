@@ -16,7 +16,6 @@ pub mod semantic_analysis;
 pub mod source_map;
 mod style;
 pub mod type_engine;
-mod new_parser_compat;
 
 pub use crate::parser::{Rule, SwayParser};
 use crate::{

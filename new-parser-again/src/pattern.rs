@@ -46,7 +46,7 @@ impl Parse for Pattern {
         match path.try_into_ident() {
             Ok(name) => {
                 if name.as_str() == "_" {
-                    return Ok(Pattern::Wildcard { span: name.span() })
+                    return Ok(Pattern::Wildcard { span: name.span().clone() })
                 }
 
                 Ok(Pattern::Var { mutable: None, name })

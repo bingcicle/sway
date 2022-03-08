@@ -27,14 +27,14 @@ pub enum PunctKind {
     Tilde,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash)]
 pub struct Punct {
     pub span: Span,
     pub kind: PunctKind,
     pub spacing: Spacing,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash)]
 pub struct Group {
     pub delimiter: Delimiter,
     pub token_stream: TokenStream,
@@ -48,7 +48,7 @@ pub enum Delimiter {
     None,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash)]
 pub enum TokenTree {
     Punct(Punct),
     Ident(Ident),
@@ -56,12 +56,12 @@ pub enum TokenTree {
     Literal(Literal),
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash)]
 pub struct TokenStream {
     token_trees: Vec<TokenTree>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash)]
 pub enum LexError {
     UnclosedMultilineComment {
         unclosed_indices: Vec<usize>,

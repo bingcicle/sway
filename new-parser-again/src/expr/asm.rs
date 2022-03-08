@@ -142,7 +142,7 @@ impl Parse for AsmImmediate {
             None => return Err(parser.emit_error("unable to parse immediate value")),
         };
         Ok(AsmImmediate {
-            span: ident.span(),
+            span: ident.span().clone(),
             parsed,
         })
     }
