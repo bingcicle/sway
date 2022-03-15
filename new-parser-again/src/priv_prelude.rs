@@ -46,5 +46,6 @@ pub use {
     num_bigint::BigUint,
     extension_trait::extension_trait,
     unicode_xid::UnicodeXID,
+    thiserror::Error,
 };
 

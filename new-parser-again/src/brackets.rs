@@ -5,12 +5,14 @@ macro_rules! define_brackets (
         #[derive(Clone, Debug)]
         pub struct $ty_name<T> {
             inner: T,
+            span: Span,
         }
 
         impl<T> $ty_name<T> {
-            pub fn new<'a>(inner: T, _consumed: ParserConsumed<'a>) -> $ty_name<T> {
+            pub fn new<'a>(inner: T, span: Span, _consumed: ParserConsumed<'a>) -> $ty_name<T> {
                 $ty_name {
                     inner,
+                    span,
                 }
             }
 
@@ -21,6 +23,10 @@ macro_rules! define_brackets (
             pub fn into_inner(self) -> T {
                 self.inner
             }
+
+            pub fn span(&self) -> Span {
+                self.span.clone()
+            }
         }
 
         impl<T> $ty_name<T>
@@ -29,9 +35,9 @@ macro_rules! define_brackets (
         {
             pub fn try_parse(parser: &mut Parser) -> ParseResult<Option<$ty_name<T>>> {
                 match parser.enter_delimited(Delimiter::$delimiter) {
-                    Some(parser) => {
+                    Some((parser, span)) => {
                         let (inner, _consumed) = parser.parse_to_end()?;
-                        Ok(Some($ty_name { inner }))
+                        Ok(Some($ty_name { inner, span }))
                     },
                     None => Ok(None),
                 }
@@ -47,12 +53,12 @@ macro_rules! define_brackets (
                 on_error: impl FnOnce(Parser) -> ErrorEmitted,
             ) -> ParseResult<$ty_name<T>> {
                 match parser.enter_delimited(Delimiter::$delimiter) {
-                    Some(mut parser) => {
+                    Some((mut parser, span)) => {
                         let inner = parser.parse()?;
                         if !parser.is_empty() {
                             return Err(on_error(parser))
                         }
-                        Ok($ty_name { inner })
+                        Ok($ty_name { inner, span })
                     },
                     None => Err(parser.emit_error($error)),
                 }
@@ -68,12 +74,12 @@ macro_rules! define_brackets (
                 on_error: impl FnOnce(Parser) -> ErrorEmitted,
             ) -> ParseResult<Option<$ty_name<T>>> {
                 match parser.enter_delimited(Delimiter::$delimiter) {
-                    Some(mut parser) => {
+                    Some((mut parser, span)) => {
                         let inner = parser.parse()?;
                         if !parser.is_empty() {
                             return Err(on_error(parser))
                         }
-                        Ok(Some($ty_name { inner }))
+                        Ok(Some($ty_name { inner, span }))
                     },
                     None => Ok(None),
                 }
@@ -86,9 +92,9 @@ macro_rules! define_brackets (
         {
             fn parse(parser: &mut Parser) -> ParseResult<$ty_name<T>> {
                 match parser.enter_delimited(Delimiter::$delimiter) {
-                    Some(parser) => {
+                    Some((parser, span)) => {
                         let (inner, _consumed) = parser.parse_to_end()?;
-                        Ok($ty_name { inner })
+                        Ok($ty_name { inner, span })
                     },
                     None => Err(parser.emit_error($error)),
                 }
@@ -106,5 +112,15 @@ pub struct AngleBrackets<T> {
     pub less_than_token: LessThanToken,
     pub inner: T,
     pub greater_than_token: GreaterThanToken,
+}
+
+impl<T> AngleBrackets<T> {
+    pub fn into_inner(self) -> T {
+        self.inner
+    }
+
+    pub fn span(&self) -> Span {
+        Span::join(self.less_than_token.span(), self.greater_than_token.span())
+    }
 }
 

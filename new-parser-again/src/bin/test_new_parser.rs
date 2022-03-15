@@ -105,12 +105,16 @@ fn parse_all_in_dir(dir: &Path) -> bool {
             },
         };
         println!("parsing: {}", path.display());
-        let parser = Parser::new(&token_stream);
+        let mut errors = Vec::new();
+        let parser = Parser::new(&token_stream, &mut errors);
         let program_res = parser.parse_to_end::<new_parser_again::Program>();
         let _program = match program_res {
             Ok(program) => program,
             Err(_error) => {
-                println!("parse error");
+                println!("parse errors:");
+                for error in errors {
+                    println!("{}", error);
+                }
                 return false;
             },
         };

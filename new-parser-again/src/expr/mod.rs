@@ -243,7 +243,7 @@ pub struct CodeBlockContents {
 }
 
 impl ParseToEnd for CodeBlockContents {
-    fn parse_to_end<'a>(mut parser: Parser<'a>) -> ParseResult<(CodeBlockContents, ParserConsumed<'a>)> {
+    fn parse_to_end<'a, 'e>(mut parser: Parser<'a, 'e>) -> ParseResult<(CodeBlockContents, ParserConsumed<'a>)> {
         let mut statements = Vec::new();
         let (final_expr_opt, consumed) = loop {
             if let Some(consumed) = parser.check_empty() {
@@ -511,7 +511,7 @@ fn parse_projection(parser: &mut Parser, allow_struct_exprs: bool) -> ParseResul
     loop {
         if let Some(arg) = SquareBrackets::try_parse_all_inner(
             parser,
-            |parser| parser.emit_error("unexpected tokens after array index"),
+            |mut parser| parser.emit_error("unexpected tokens after array index"),
         )? {
             let target = Box::new(expr);
             expr = Expr::Index { target, arg };
@@ -566,18 +566,18 @@ fn parse_atom(parser: &mut Parser, allow_struct_exprs: bool) -> ParseResult<Expr
     if let Some(array_inner) = SquareBrackets::try_parse(parser)? {
         return Ok(Expr::Array(array_inner));
     }
-    if let Some(mut parser) = parser.enter_delimited(Delimiter::Parenthesis) {
+    if let Some((mut parser, span)) = parser.enter_delimited(Delimiter::Parenthesis) {
         if let Some(consumed) = parser.check_empty() {
-            return Ok(Expr::Tuple(Parens::new(ExprTupleDescriptor::Nil, consumed)));
+            return Ok(Expr::Tuple(Parens::new(ExprTupleDescriptor::Nil, span, consumed)));
         }
         let head = parser.parse()?;
         if let Some(comma_token) = parser.take() {
             let (tail, consumed) = parser.parse_to_end()?;
             let tuple = ExprTupleDescriptor::Cons { head, comma_token, tail };
-            return Ok(Expr::Tuple(Parens::new(tuple, consumed)));
+            return Ok(Expr::Tuple(Parens::new(tuple, span, consumed)));
         }
         if let Some(consumed) = parser.check_empty() {
-            return Ok(Expr::Parens(Parens::new(head, consumed)));
+            return Ok(Expr::Parens(Parens::new(head, span, consumed)));
         }
         return Err(parser.emit_error("expected a comma (if this is meant to be a tuple), or a closing parenthesis."));
     }
@@ -652,7 +652,7 @@ impl Parse for ExprStructField {
 }
 
 impl ParseToEnd for ExprArrayDescriptor {
-    fn parse_to_end<'a>(mut parser: Parser<'a>) -> ParseResult<(ExprArrayDescriptor, ParserConsumed<'a>)> {
+    fn parse_to_end<'a, 'e>(mut parser: Parser<'a, 'e>) -> ParseResult<(ExprArrayDescriptor, ParserConsumed<'a>)> {
         if let Some(consumed) = parser.check_empty() {
             let punctuated = Punctuated {
                 value_separator_pairs: Vec::new(),

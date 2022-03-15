@@ -9,6 +9,17 @@ pub struct ItemEnum {
     pub fields: Braces<Punctuated<TypeField, CommaToken>>,
 }
 
+impl ItemEnum {
+    pub fn span(&self) -> Span {
+        let start = match &self.visibility {
+            Some(pub_token) => pub_token.span(),
+            None => self.enum_token.span(),
+        };
+        let end = self.fields.span();
+        Span::join(start.clone(), end)
+    }
+}
+
 impl Parse for ItemEnum {
     fn parse(parser: &mut Parser) -> ParseResult<ItemEnum> {
         let visibility = parser.take();

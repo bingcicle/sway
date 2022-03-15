@@ -8,6 +8,12 @@ pub struct ItemImpl {
     pub contents: Braces<Vec<ItemFn>>,
 }
 
+impl ItemImpl {
+    pub fn span(&self) -> Span {
+        Span::join(self.impl_token.span(), self.contents.span())
+    }
+}
+
 impl Parse for ItemImpl {
     fn parse(parser: &mut Parser) -> ParseResult<ItemImpl> {
         let impl_token = parser.parse()?;

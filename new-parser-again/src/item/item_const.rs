@@ -11,6 +11,17 @@ pub struct ItemConst {
     pub semicolon_token: SemicolonToken,
 }
 
+impl ItemConst {
+    pub fn span(&self) -> Span {
+        let start = match &self.visibility {
+            Some(pub_token) => pub_token.span(),
+            None => self.const_token.span(),
+        };
+        let end = self.semicolon_token.span();
+        Span::join(start, end)
+    }
+}
+
 impl Parse for ItemConst {
     fn parse(parser: &mut Parser) -> ParseResult<ItemConst> {
         let visibility = parser.take();

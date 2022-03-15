@@ -9,6 +9,17 @@ pub struct ItemUse {
     pub semicolon_token: SemicolonToken,
 }
 
+impl ItemUse {
+    pub fn span(&self) -> Span {
+        let start = match &self.visibility {
+            Some(pub_token) => pub_token.span(),
+            None => self.use_token.span(),
+        };
+        let end = self.semicolon_token.span();
+        Span::join(start.clone(), end)
+    }
+}
+
 #[derive(Clone, Debug)]
 pub enum UseTree {
     Group {

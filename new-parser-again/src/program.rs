@@ -7,6 +7,20 @@ pub struct Program {
     pub items: Vec<Item>,
 }
 
+impl Program {
+    pub fn span(&self) -> Span {
+        let start = self.kind.span();
+        let end = match self.items.last() {
+            Some(item) => item.span(),
+            None => match self.dependencies.last() {
+                Some(dependency) => dependency.span(),
+                None => self.semicolon_token.span(),
+            },
+        };
+        Span::join(start, end)
+    }
+}
+
 pub enum ProgramKind {
     Script {
         script_token: ScriptToken,
@@ -21,6 +35,19 @@ pub enum ProgramKind {
         library_token: LibraryToken,
         name: Ident,
     },
+}
+
+impl ProgramKind {
+    fn span(&self) -> Span {
+        match self {
+            ProgramKind::Script { script_token } => script_token.span(),
+            ProgramKind::Contract { contract_token } => contract_token.span(),
+            ProgramKind::Predicate { predicate_token } => predicate_token.span(),
+            ProgramKind::Library { library_token, name } => {
+                Span::join(library_token.span(), name.span().clone())
+            },
+        }
+    }
 }
 
 impl Parse for ProgramKind {
@@ -46,7 +73,7 @@ impl Parse for ProgramKind {
 }
 
 impl ParseToEnd for Program {
-    fn parse_to_end(mut parser: Parser) -> ParseResult<(Program, ParserConsumed)> {
+    fn parse_to_end<'a, 'e>(mut parser: Parser<'a, 'e>) -> ParseResult<(Program, ParserConsumed<'a>)> {
         let kind = parser.parse()?;
         let semicolon_token = parser.parse()?;
         let mut dependencies = Vec::new();

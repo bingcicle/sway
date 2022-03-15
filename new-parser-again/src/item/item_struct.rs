@@ -9,6 +9,17 @@ pub struct ItemStruct {
     pub fields: Braces<Punctuated<TypeField, CommaToken>>,
 }
 
+impl ItemStruct {
+    pub fn span(&self) -> Span {
+        let start = match &self.visibility {
+            Some(pub_token) => pub_token.span(),
+            None => self.struct_token.span(),
+        };
+        let end = self.fields.span();
+        Span::join(start.clone(), end)
+    }
+}
+
 impl Parse for ItemStruct {
     fn parse(parser: &mut Parser) -> ParseResult<ItemStruct> {
         let visibility = parser.take();

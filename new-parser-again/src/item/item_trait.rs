@@ -10,6 +10,20 @@ pub struct ItemTrait {
     pub trait_defs_opt: Option<Braces<Vec<ItemFn>>>,
 }
 
+impl ItemTrait {
+    pub fn span(&self) -> Span {
+        let start = match &self.visibility {
+            Some(pub_token) => pub_token.span(),
+            None => self.trait_token.span(),
+        };
+        let end = match &self.trait_defs_opt {
+            Some(trait_defs) => trait_defs.span(),
+            None => self.trait_items.span(),
+        };
+        Span::join(start, end)
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct Traits {
     pub prefix: Ty,

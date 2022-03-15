@@ -87,11 +87,42 @@ pub struct PathType {
     pub suffix: Vec<(DoubleColonToken, PathTypeSegment)>,
 }
 
+impl PathType {
+    pub fn span(&self) -> Span {
+        let start = match &self.root_opt {
+            Some((qualified_path_root_opt, double_colon_token)) => match qualified_path_root_opt {
+                Some(qualified_path_root) => qualified_path_root.span(),
+                None => double_colon_token.span(),
+            },
+            None => self.prefix.span(),
+        };
+        let end = match self.suffix.last() {
+            Some((_double_colon_token, path_type_segment)) => path_type_segment.span(),
+            None => self.prefix.span(),
+        };
+        Span::join(start, end)
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct PathTypeSegment {
     pub fully_qualified: Option<TildeToken>,
     pub name: Ident,
     pub generics_opt: Option<(Option<DoubleColonToken>, GenericArgs)>,
+}
+
+impl PathTypeSegment {
+    pub fn span(&self) -> Span {
+        let start = match &self.fully_qualified {
+            Some(tilde_token) => tilde_token.span(),
+            None => self.name.span().clone(),
+        };
+        let end = match &self.generics_opt {
+            Some((_double_colon_token, generic_args)) => generic_args.span(),
+            None => self.name.span().clone(),
+        };
+        Span::join(start, end)
+    }
 }
 
 #[derive(Clone, Debug)]

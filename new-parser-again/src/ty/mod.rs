@@ -11,6 +11,19 @@ pub enum Ty {
     },
 }
 
+impl Ty {
+    pub fn span(&self) -> Span {
+        match self {
+            Ty::Path(path_type) => path_type.span(),
+            Ty::Tuple(tuple_type) => tuple_type.span(),
+            Ty::Array(array_type) => array_type.span(),
+            Ty::Str { str_token, length } => {
+                Span::join(str_token.span(), length.span())
+            },
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct TyArrayDescriptor {
     pub ty: Box<Ty>,
@@ -29,7 +42,7 @@ impl Parse for Ty {
         if let Some(str_token) = parser.take() {
             let length = SquareBrackets::parse_all_inner(
                 parser,
-                |parser| parser.emit_error("unexpected tokens after str length"),
+                |mut parser| parser.emit_error("unexpected tokens after str length"),
             )?;
             return Ok(Ty::Str { str_token, length })
         }
@@ -46,7 +59,7 @@ impl Parse for Ty {
 }
 
 impl ParseToEnd for TyArrayDescriptor {
-    fn parse_to_end<'a>(mut parser: Parser<'a>) -> ParseResult<(TyArrayDescriptor, ParserConsumed<'a>)> {
+    fn parse_to_end<'a, 'e>(mut parser: Parser<'a, 'e>) -> ParseResult<(TyArrayDescriptor, ParserConsumed<'a>)> {
         let ty = parser.parse()?;
         let semicolon_token = parser.parse()?;
         let length = parser.parse()?;

@@ -11,7 +11,7 @@ where
     T: Parse,
     P: Parse,
 {
-    fn parse_to_end<'a>(mut parser: Parser<'a>) -> ParseResult<(Punctuated<T, P>, ParserConsumed<'a>)> {
+    fn parse_to_end<'a, 'e>(mut parser: Parser<'a, 'e>) -> ParseResult<(Punctuated<T, P>, ParserConsumed<'a>)> {
         let mut value_separator_pairs = Vec::new();
         loop {
             if let Some(consumed) = parser.check_empty() {
@@ -31,6 +31,36 @@ where
             }
             let separator = parser.parse()?;
             value_separator_pairs.push((value, separator));
+        }
+    }
+}
+
+impl<T, P> IntoIterator for Punctuated<T, P> {
+    type Item = T;
+    type IntoIter = PunctuatedIter<T, P>;
+    fn into_iter(self) -> PunctuatedIter<T, P> {
+        PunctuatedIter {
+            value_separator_pairs: self.value_separator_pairs.into_iter(),
+            final_value_opt: self.final_value_opt,
+        }
+    }
+}
+
+pub struct PunctuatedIter<T, P> {
+    value_separator_pairs: std::vec::IntoIter<(T, P)>,
+    final_value_opt: Option<Box<T>>,
+}
+
+impl<T, P> Iterator for PunctuatedIter<T, P> {
+    type Item = T;
+
+    fn next(&mut self) -> Option<T> {
+        match self.value_separator_pairs.next() {
+            Some((value, _separator)) => Some(value),
+            None => match self.final_value_opt.take() {
+                Some(value) => Some(*value),
+                None => None,
+            },
         }
     }
 }

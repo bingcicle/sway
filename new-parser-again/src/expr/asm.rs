@@ -55,7 +55,7 @@ impl Parse for AsmRegisterDeclaration {
 }
 
 impl ParseToEnd for AsmBlockContents {
-    fn parse_to_end<'a>(mut parser: Parser<'a>) -> ParseResult<(AsmBlockContents, ParserConsumed<'a>)> {
+    fn parse_to_end<'a, 'e>(mut parser: Parser<'a, 'e>) -> ParseResult<(AsmBlockContents, ParserConsumed<'a>)> {
         let mut instructions = Vec::new();
         let (final_expr_opt, consumed) = loop {
             if let Some(consumed) = parser.check_empty() {

@@ -6,6 +6,12 @@ pub struct ItemFn {
     pub body: Braces<CodeBlockContents>,
 }
 
+impl ItemFn {
+    pub fn span(&self) -> Span {
+        Span::join(self.fn_signature.span(), self.body.span())
+    }
+}
+
 impl Parse for ItemFn {
     fn parse(parser: &mut Parser) -> ParseResult<ItemFn> {
         let fn_signature = parser.parse()?;

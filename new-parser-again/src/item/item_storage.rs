@@ -6,6 +6,12 @@ pub struct ItemStorage {
     pub fields: Braces<Punctuated<StorageField, CommaToken>>,
 }
 
+impl ItemStorage {
+    pub fn span(&self) -> Span {
+        Span::join(self.storage_token.span(), self.fields.span())
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct StorageField {
     pub name: Ident,

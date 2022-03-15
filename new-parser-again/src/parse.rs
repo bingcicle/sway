@@ -13,7 +13,7 @@ pub trait Peek {
 }
 
 pub trait ParseToEnd {
-    fn parse_to_end<'a>(parser: Parser<'a>) -> ParseResult<(Self, ParserConsumed<'a>)>
+    fn parse_to_end<'a, 'e>(parser: Parser<'a, 'e>) -> ParseResult<(Self, ParserConsumed<'a>)>
     where
         Self: Sized;
 }
@@ -65,7 +65,7 @@ impl<T> ParseToEnd for Vec<T>
 where
     T: Parse,
 {
-    fn parse_to_end<'a>(mut parser: Parser<'a>) -> ParseResult<(Vec<T>, ParserConsumed<'a>)> {
+    fn parse_to_end<'a, 'e>(mut parser: Parser<'a, 'e>) -> ParseResult<(Vec<T>, ParserConsumed<'a>)> {
         let mut ret = Vec::new();
         loop {
             if let Some(consumed) = parser.check_empty() {

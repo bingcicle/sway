@@ -6,6 +6,12 @@ pub struct Dependency {
     pub semicolon_token: SemicolonToken,
 }
 
+impl Dependency {
+    pub fn span(&self) -> Span {
+        Span::join(self.dep_token.span(), self.semicolon_token.span())
+    }
+}
+
 pub struct DependencyPath {
     pub prefix: Ident,
     pub suffixes: Vec<(ForwardSlashToken, Ident)>,

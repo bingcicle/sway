@@ -23,6 +23,22 @@ pub enum Item {
     Storage(ItemStorage),
 }
 
+impl Item {
+    pub fn span(&self) -> Span {
+        match self {
+            Item::Use(item_use) => item_use.span(),
+            Item::Struct(item_struct) => item_struct.span(),
+            Item::Enum(item_enum) => item_enum.span(),
+            Item::Fn(item_fn) => item_fn.span(),
+            Item::Trait(item_trait) => item_trait.span(),
+            Item::Impl(item_impl) => item_impl.span(),
+            Item::Abi(item_abi) => item_abi.span(),
+            Item::Const(item_const) => item_const.span(),
+            Item::Storage(item_storage) => item_storage.span(),
+        }
+    }
+}
+
 impl Parse for Item {
     fn parse(parser: &mut Parser) -> ParseResult<Item> {
         if parser.peek::<UseToken>().is_some() || parser.peek2::<PubToken, UseToken>().is_some() {
@@ -77,6 +93,12 @@ pub struct TypeField {
     pub ty: Ty,
 }
 
+impl TypeField {
+    pub fn span(&self) -> Span {
+        Span::join(self.name.span().clone(), self.ty.span())
+    }
+}
+
 impl Parse for TypeField {
     fn parse(parser: &mut Parser) -> ParseResult<TypeField> {
         let name = parser.parse()?;
@@ -96,7 +118,7 @@ pub enum FnArgs {
 }
 
 impl ParseToEnd for FnArgs {
-    fn parse_to_end<'a>(mut parser: Parser<'a>) -> ParseResult<(FnArgs, ParserConsumed<'a>)> {
+    fn parse_to_end<'a, 'e>(mut parser: Parser<'a, 'e>) -> ParseResult<(FnArgs, ParserConsumed<'a>)> {
         match parser.take() {
             Some(self_token) => {
                 match parser.take() {
@@ -142,6 +164,23 @@ pub struct FnSignature {
     pub generics: Option<GenericParams>,
     pub arguments: Parens<FnArgs>,
     pub return_type_opt: Option<(RightArrowToken, Ty)>,
+}
+
+impl FnSignature {
+    pub fn span(&self) -> Span {
+        let start = match &self.visibility {
+            Some(pub_token) => pub_token.span(),
+            None => match &self.impure {
+                Some(impure_token) => impure_token.span(),
+                None => self.fn_token.span(),
+            },
+        };
+        let end = match &self.return_type_opt {
+            Some((_right_arrow, ty)) => ty.span(),
+            None => self.arguments.span(),
+        };
+        Span::join(start, end)
+    }
 }
 
 impl Parse for FnSignature {

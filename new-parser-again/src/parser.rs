@@ -1,19 +1,29 @@
 use crate::priv_prelude::*;
 
-pub struct Parser<'a> {
-    token_trees: &'a [TokenTree],
+#[derive(Debug, Error, Clone, PartialEq, Hash)]
+#[error("{msg}")]
+pub struct ParseError {
+    msg: String,
 }
 
-impl<'a> Parser<'a> {
-    pub fn new(token_stream: &'a TokenStream) -> Parser<'a> {
+pub struct Parser<'a, 'e> {
+    token_trees: &'a [TokenTree],
+    errors: &'e mut Vec<ParseError>,
+}
+
+impl<'a, 'e> Parser<'a, 'e> {
+    pub fn new(token_stream: &'a TokenStream, errors: &'e mut Vec<ParseError>) -> Parser<'a, 'e> {
         Parser {
             token_trees: token_stream.token_trees(),
+            errors,
         }
     }
 
-    pub fn emit_error(&self, msg: impl Into<String>) -> ErrorEmitted {
-        println!("ERROR: {}", msg.into());
-        // todo
+    pub fn emit_error(&mut self, msg: impl Into<String>) -> ErrorEmitted {
+        let error = ParseError {
+            msg: msg.into(),
+        };
+        self.errors.push(error);
         ErrorEmitted { _priv: () }
     }
 
@@ -76,8 +86,7 @@ impl<'a> Parser<'a> {
     }
 
     pub fn parse<T: Parse>(&mut self) -> ParseResult<T> {
-        T::parse(self)
-    }
+        T::parse(self) }
 
     pub fn parse_to_end<T: ParseToEnd>(self) -> ParseResult<(T, ParserConsumed<'a>)> {
         T::parse_to_end(self)
@@ -92,13 +101,15 @@ impl<'a> Parser<'a> {
         Ok(Some((value, consumed)))
     }
 
-    pub fn enter_delimited(&mut self, expected_delimiter: Delimiter) -> Option<Parser<'_>> {
+    pub fn enter_delimited(&mut self, expected_delimiter: Delimiter) -> Option<(Parser<'_, '_>, Span)> {
         match self.token_trees.split_first()? {
-            (TokenTree::Group(Group { delimiter, token_stream }), rest) if *delimiter == expected_delimiter => {
+            (TokenTree::Group(Group { delimiter, token_stream, span }), rest) if *delimiter == expected_delimiter => {
                 self.token_trees = rest;
-                Some(Parser {
+                let parser = Parser {
                     token_trees: token_stream.token_trees(),
-                })
+                    errors: self.errors,
+                };
+                Some((parser, span.clone()))
             },
             _ => None,
         }
@@ -200,8 +211,7 @@ pub struct ErrorEmitted {
     _priv: (),
 }
 
-pub struct ParserConsumed<'a> {
-    _priv: PhantomData<fn(&'a ()) -> &'a ()>,
+pub struct ParserConsumed<'a> { _priv: PhantomData<fn(&'a ()) -> &'a ()>,
 }
 
 pub type ParseResult<T> = Result<T, ErrorEmitted>;

@@ -31,6 +31,12 @@ pub struct GenericArgs {
     pub parameters: AngleBrackets<Punctuated<Ty, CommaToken>>,
 }
 
+impl GenericArgs {
+    pub fn span(&self) -> Span {
+        self.parameters.span()
+    }
+}
+
 impl Parse for GenericArgs {
     fn parse(parser: &mut Parser) -> ParseResult<GenericArgs> {
         let less_than_token = parser.parse()?;

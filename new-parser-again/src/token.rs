@@ -38,6 +38,7 @@ pub struct Punct {
 pub struct Group {
     pub delimiter: Delimiter,
     pub token_stream: TokenStream,
+    pub span: Span,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -61,66 +62,150 @@ pub struct TokenStream {
     token_trees: Vec<TokenTree>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash)]
+#[derive(Error, Debug, Clone, PartialEq, Eq, PartialOrd, Hash)]
 pub enum LexError {
+    #[error("unclosed multiline comment")]
     UnclosedMultilineComment {
         unclosed_indices: Vec<usize>,
+        end_position: usize,
     },
+    #[error("unexpected close delimiter")]
     UnexpectedCloseDelimiter {
         position: usize,
         close_delimiter: Delimiter,
     },
+    #[error("mismatched delimiters")]
     MismatchedDelimiters {
         open_position: usize,
         close_position: usize,
         open_delimiter: Delimiter,
         close_delimiter: Delimiter,
     },
+    #[error("unclosed delimiter")]
     UnclosedDelimiter {
         open_position: usize,
         open_delimiter: Delimiter,
     },
+    #[error("unclosed string literal")]
     UnclosedStringLiteral {
         position: usize,
     },
+    #[error("unclosed char literal")]
     UnclosedCharLiteral {
         position: usize,
     },
+    #[error("expected close quote")]
     ExpectedCloseQuote {
         position: usize,
     },
+    #[error("incomplete hex int literal")]
     IncompleteHexIntLiteral {
         position: usize,
     },
+    #[error("incomplete binary int literal")]
     IncompleteBinaryIntLiteral {
         position: usize,
     },
+    #[error("incomplete octal int literal")]
     IncompleteOctalIntLiteral {
         position: usize,
     },
+    #[error("invalid character")]
     InvalidCharacter {
         position: usize,
         character: char,
     },
+    #[error("invalid hex escape")]
     InvalidHexEscape {
         span: Span,
     },
+    #[error("unicode escape missing brace")]
     UnicodeEscapeMissingBrace {
         position: usize,
     },
+    #[error("invalid unicode escape digit")]
     InvalidUnicodeEscapeDigit {
         position: usize,
     },
+    #[error("unicode escape out of range")]
     UnicodeEscapeOutOfRange {
         position: usize,
     },
+    #[error("unicode escape represents an invalid char value")]
     UnicodeEscapeInvalidCharValue {
         span: Span,
     },
+    #[error("invalid escape code")]
     InvalidEscapeCode {
         position: usize,
     },
 }
+
+/*
+impl LexError {
+    pub fn span(&self) -> Span {
+        match self {
+            UnclosedMultilineComment { unclosed_indices, end_position } => {
+                Span::
+            },
+            UnexpectedCloseDelimiter {
+                position: usize,
+                close_delimiter: Delimiter,
+            },
+            MismatchedDelimiters {
+                open_position: usize,
+                close_position: usize,
+                open_delimiter: Delimiter,
+                close_delimiter: Delimiter,
+            },
+            UnclosedDelimiter {
+                open_position: usize,
+                open_delimiter: Delimiter,
+            },
+            UnclosedStringLiteral {
+                position: usize,
+            },
+            UnclosedCharLiteral {
+                position: usize,
+            },
+            ExpectedCloseQuote {
+                position: usize,
+            },
+            IncompleteHexIntLiteral {
+                position: usize,
+            },
+            IncompleteBinaryIntLiteral {
+                position: usize,
+            },
+            IncompleteOctalIntLiteral {
+                position: usize,
+            },
+            InvalidCharacter {
+                position: usize,
+                character: char,
+            },
+            InvalidHexEscape {
+                span: Span,
+            },
+            UnicodeEscapeMissingBrace {
+                position: usize,
+            },
+            InvalidUnicodeEscapeDigit {
+                position: usize,
+            },
+            UnicodeEscapeOutOfRange {
+                position: usize,
+            },
+            UnicodeEscapeInvalidCharValue {
+                span: Span,
+            },
+            InvalidEscapeCode {
+                position: usize,
+            },
+        }
+    }
+}
+*/
 
 #[extension_trait]
 impl CharExt for char {
@@ -228,12 +313,14 @@ pub fn lex(src: &Arc<str>, start: usize, end: usize, path: Option<Arc<PathBuf>>)
                             None => {
                                 return Err(LexError::UnclosedMultilineComment {
                                     unclosed_indices,
+                                    end_position: src.len(),
                                 })
                             },
                             Some((_, '*')) => match char_indices.next() {
                                 None => {
                                     return Err(LexError::UnclosedMultilineComment {
                                         unclosed_indices,
+                                        end_position: src.len(),
                                     })
                                 },
                                 Some((_, '/')) => {
@@ -249,6 +336,7 @@ pub fn lex(src: &Arc<str>, start: usize, end: usize, path: Option<Arc<PathBuf>>)
                                 None => {
                                     return Err(LexError::UnclosedMultilineComment {
                                         unclosed_indices,
+                                        end_position: src.len(),
                                     })
                                 },
                                 Some((_, '*')) => {
@@ -330,6 +418,7 @@ pub fn lex(src: &Arc<str>, start: usize, end: usize, path: Option<Arc<PathBuf>>)
                             token_trees: parent,
                         },
                         delimiter: close_delimiter,
+                        span: span_until(src, open_index, &mut char_indices, &path),
                     };
                     token_trees.push(TokenTree::Group(group));
                 },
