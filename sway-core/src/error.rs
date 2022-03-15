@@ -858,6 +858,15 @@ pub enum CompileError {
         trait_name: String,
         span: Span,
     },
+
+    #[error("lex error: {}", error)]
+    Lex {
+        error: new_parser_again::LexError,
+    },
+    #[error("parse error: {}", error)]
+    Parse {
+        error: new_parser_again::ParseError,
+    },
 }
 
 impl std::convert::From<TypeError> for CompileError {
@@ -1068,6 +1077,8 @@ impl CompileError {
             NameDefinedMultipleTimesForTrait { span, .. } => span,
             SupertraitImplMissing { span, .. } => span,
             SupertraitImplRequired { span, .. } => span,
+            Lex { error: _ } => todo!(),
+            Parse { error: _ } => todo!(),
         }
     }
 

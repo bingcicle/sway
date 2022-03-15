@@ -16,6 +16,7 @@ pub mod semantic_analysis;
 pub mod source_map;
 mod style;
 pub mod type_engine;
+mod convert_parse_tree;
 
 pub use crate::parser::{Rule, SwayParser};
 use crate::{
@@ -230,6 +231,7 @@ pub(crate) struct InnerDependencyCompileResult {
     name: Ident,
     namespace: Namespace,
 }
+
 /// For internal compiler use.
 /// Compiles an included file and returns its control flow and dead code graphs.
 /// These graphs are merged into the parent program's graphs for accurate analysis.
