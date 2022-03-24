@@ -23,8 +23,8 @@ pub struct ImplTrait {
 /// like `impl MyType { fn foo { .. } }`
 #[derive(Debug, Clone)]
 pub struct ImplSelf {
-    pub(crate) type_implementing_for: TypeInfo,
-    pub(crate) type_arguments: Vec<TypeParameter>,
+    pub type_implementing_for: TypeInfo,
+    pub type_arguments: Vec<TypeParameter>,
     pub functions: Vec<FunctionDeclaration>,
     // the span of the whole impl trait and block
     pub(crate) block_span: Span,
