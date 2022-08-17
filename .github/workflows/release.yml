@@ -91,9 +91,7 @@ jobs:
           ZIP_FILE_NAME=forc-binaries-nightly-${{ steps.vars.outputs.date }}-${{ steps.vars.outputs.sha_short }}-${{ env.PLATFORM_NAME }}_${{ env.ARCH }}.tar.gz
           echo "ZIP_FILE_NAME=$ZIP_FILE_NAME" >> $GITHUB_ENV
           mkdir -pv ./forc-binaries
-          for binary in forc forc-fmt forc-lsp forc-explore; do
-            cp $(which ${binary}) ./forc-binaries
-          done
+          cp $(which forc-lsp) ./forc-binaries
           tar -czvf $ZIP_FILE_NAME ./forc-binaries
 
       - name: Archive forc binaries
