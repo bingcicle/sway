@@ -17,10 +17,6 @@ jobs:
     name: Install and upload forc binaries to release
     runs-on: ${{ matrix.job.os }}
     if: github.event_name == 'release' && github.event.action == 'published'
-    needs: [
-      cancel-previous-runs,
-      publish,
-    ]
     strategy:
       matrix:
         job:
