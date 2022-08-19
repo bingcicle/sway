@@ -75,11 +75,10 @@ jobs:
           args: --profile=release --path ./forc-lsp
 
 
-      - name: Get current date and SHA
-        id: vars 
+      - name: Set current date
+        id: set-date
         run: |
           echo "::set-output name=date::$(date +'%Y-%m-%d')"
-          echo "::set-output name=sha_short::$(git rev-parse --short HEAD)"
 
       - name: Prep Assets
         id: prep_assets
@@ -88,7 +87,7 @@ jobs:
           TARGET: ${{ matrix.job.target }}
           ARCH: ${{ matrix.job.arch }}
         run: |
-          ZIP_FILE_NAME=forc-binaries-nightly-${{ steps.vars.outputs.date }}-${{ steps.vars.outputs.sha_short }}-${{ env.PLATFORM_NAME }}_${{ env.ARCH }}.tar.gz
+          ZIP_FILE_NAME=forc-binaries-nightly-${{ steps.set-date.outputs.date }}-${{ env.PLATFORM_NAME }}_${{ env.ARCH }}.tar.gz
           echo "ZIP_FILE_NAME=$ZIP_FILE_NAME" >> $GITHUB_ENV
           mkdir -pv ./forc-binaries
           cp $(which forc-lsp) ./forc-binaries
