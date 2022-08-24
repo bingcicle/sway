@@ -48,45 +48,6 @@ jobs:
       - name: Build sway-lib-std
         run: forc build --path sway-lib-std
 
-  build-mdbook:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-      - uses: Swatinem/rust-cache@v1
-      - name: Install Forc
-        uses: actions-rs/cargo@v1
-        with:
-          command: install
-          args: --debug --path ./forc
-      - name: Install Forc plugins
-        run: |
-          cargo install --debug --path ./forc-plugins/forc-fmt 
-          cargo install --debug --path ./forc-plugins/forc-lsp 
-          cargo install --debug --path ./forc-plugins/forc-explore
-          cargo install --debug --path ./forc-plugins/forc-client
-      - name: Install mdbook-forc-documenter
-        uses: actions-rs/cargo@v1
-        with:
-          command: install
-          args: --debug --path ./scripts/mdbook-forc-documenter
-      - name: Run mdbook build
-        uses: peaceiris/actions-mdbook@v1
-        with:
-          mdbook-version: "0.4.15"
-      - name: Emit logs to tmp.txt, fail if build logs contain 'ERROR'
-        run: |
-          MDBOOK_preprocessor__FORC_documenter__STRICT="true" mdbook build docs &> tmp.txt
-          if cat tmp.txt | grep 'ERROR'
-          then
-            rm tmp.txt && exit 1
-          else
-            rm tmp.txt && exit 0
-          fi
-
   build-forc-test-project:
     runs-on: ubuntu-latest
     steps:
@@ -190,9 +151,39 @@ jobs:
           command: test
           args: --locked
 
+  release:
+    name: Prepare release
+    needs: [
+      build-sway-lib-core,
+      build-sway-lib-std,
+      build-forc-test-project,
+      cargo-build-workspace,
+      cargo-run-e2e-test,
+      cargo-test-lib-std,
+      cargo-test-workspace
+    ]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set current date
+        id: set-date
+        run: |
+          echo "::set-output name=date::$(date +'%Y-%m-%d')"
+
+      - name: Create Draft Release
+        id: create_prerelease
+        uses: ncipollo/release-action@v1
+        with:
+          name: nightly-${{ steps.set-date.outputs.date }}
+          tag: nightly-${{ steps.set-date.outputs.date }}
+          token: ${{ secrets.YOUR_GITHUB_TOKEN }}
+          allowUpdates: true
+          removeArtifacts: true
+          draft: false 
+          token: ${{ secrets.GITHUB_TOKEN }}
 
   install-and-upload-forc-binaries:
     name: Install and upload forc binaries to release
+    needs: release
     runs-on: ${{ matrix.job.os }}
     strategy:
       matrix:
