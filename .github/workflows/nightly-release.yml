@@ -190,33 +190,6 @@ jobs:
           command: test
           args: --locked
 
-  notify-slack-on-failure:
-    needs:
-      [
-        build-forc-test-project,
-        build-sway-examples,
-        build-sway-lib-core,
-        build-sway-lib-std,
-        cargo-build-workspace,
-        cargo-run-e2e-test,
-        cargo-test-lib-std,
-        cargo-test-workspace,
-      ]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Notify Slack On Failure
-        uses: ravsamhq/notify-slack-action@v1
-        if: always() && github.ref == 'refs/heads/master'
-        with:
-          status: ${{ job.status }}
-          token: ${{ secrets.GITHUB_TOKEN }}
-          notification_title: "{workflow} has {status_message}"
-          message_format: "{emoji} *{workflow}* {status_message} in <{repo_url}|{repo}> : <{run_url}|View Run Results>"
-          footer: ""
-          notify_when: "failure"
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_NOTIFY_BUILD }}
-
 
   install-and-upload-forc-binaries:
     name: Install and upload forc binaries to release
