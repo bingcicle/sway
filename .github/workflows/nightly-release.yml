@@ -175,7 +175,6 @@ jobs:
         with:
           name: nightly-${{ steps.set-date.outputs.date }}
           tag: nightly-${{ steps.set-date.outputs.date }}
-          token: ${{ secrets.YOUR_GITHUB_TOKEN }}
           allowUpdates: true
           removeArtifacts: true
           draft: false 
