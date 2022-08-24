@@ -1,21 +1,21 @@
 contract;
 
 abi TestContract {
-    fn initialize_counter(value: u64) -> u64;
-    fn increment_counter(amount: u64) -> u64;
+    #[storage(write)]fn initialize_counter(value: u64) -> u64;
+    #[storage(read, write)]fn increment_counter(amount: u64) -> u64;
 }
 
 storage {
-    counter: u64,
+    counter: u64 = 0,
 }
 
 impl TestContract for Contract {
-    fn initialize_counter(value: u64) -> u64 {
+    #[storage(write)]fn initialize_counter(value: u64) -> u64 {
         storage.counter = value;
         value
     }
 
-    fn increment_counter(amount: u64) -> u64 {
+    #[storage(read, write)]fn increment_counter(amount: u64) -> u64 {
         let incremented = storage.counter + amount;
         storage.counter = incremented;
         incremented

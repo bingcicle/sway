@@ -1,47 +1,6 @@
-use crate::priv_prelude::*;
+use crate::{Parse, ParseBracket, ParseErrorKind, ParseResult, Parser};
 
-#[derive(Clone, Debug)]
-pub struct ItemUse {
-    pub visibility: Option<PubToken>,
-    pub use_token: UseToken,
-    pub root_import: Option<DoubleColonToken>,
-    pub tree: UseTree,
-    pub semicolon_token: SemicolonToken,
-}
-
-impl ItemUse {
-    pub fn span(&self) -> Span {
-        let start = match &self.visibility {
-            Some(pub_token) => pub_token.span(),
-            None => self.use_token.span(),
-        };
-        let end = self.semicolon_token.span();
-        Span::join(start, end)
-    }
-}
-
-#[derive(Clone, Debug)]
-pub enum UseTree {
-    Group {
-        imports: Braces<Punctuated<UseTree, CommaToken>>,
-    },
-    Name {
-        name: Ident,
-    },
-    Rename {
-        name: Ident,
-        as_token: AsToken,
-        alias: Ident,
-    },
-    Glob {
-        star_token: StarToken,
-    },
-    Path {
-        prefix: Ident,
-        double_colon_token: DoubleColonToken,
-        suffix: Box<UseTree>,
-    },
-}
+use sway_ast::{Braces, ItemUse, UseTree};
 
 impl Parse for UseTree {
     fn parse(parser: &mut Parser) -> ParseResult<UseTree> {
@@ -51,10 +10,9 @@ impl Parse for UseTree {
         if let Some(star_token) = parser.take() {
             return Ok(UseTree::Glob { star_token });
         }
-        let name = match parser.take() {
-            Some(name) => name,
-            None => return Err(parser.emit_error(ParseErrorKind::ExpectedImportNameGroupOrGlob)),
-        };
+        let name = parser
+            .take()
+            .ok_or_else(|| parser.emit_error(ParseErrorKind::ExpectedImportNameGroupOrGlob))?;
         if let Some(as_token) = parser.take() {
             let alias = parser.parse()?;
             return Ok(UseTree::Rename {
@@ -77,13 +35,12 @@ impl Parse for UseTree {
 
 impl Parse for ItemUse {
     fn parse(parser: &mut Parser) -> ParseResult<ItemUse> {
-        let visibility = parser.take();
         let use_token = parser.parse()?;
         let root_import = parser.take();
         let tree = parser.parse()?;
         let semicolon_token = parser.parse()?;
         Ok(ItemUse {
-            visibility,
+            visibility: None,
             use_token,
             root_import,
             tree,

@@ -11,11 +11,11 @@ use ::revert::revert;
 /// `Option` is a type that represents either the existence of a value ([`Some`]) or a value's absence
 /// ([`None`]).
 pub enum Option<T> {
-    /// Contains the value
-    Some: T,
-
     /// Signifies the absence of a value
     None: (),
+
+    /// Contains the value
+    Some: T,
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -29,19 +29,25 @@ impl<T> Option<T> {
 
     /// Returns `true` if the result is [`Some`].
     fn is_some(self) -> bool {
-        if let Option::Some(t) = self {
-            true
-        } else {
-            false
+        match self {
+            Option::Some(_) => {
+                true
+            },
+            _ => {
+                false
+            },
         }
     }
 
     /// Returns `true` if the result is [`None`].
     fn is_none(self) -> bool {
-        if let Option::Some(t) = self {
-            false
-        } else {
-            true
+        match self {
+            Option::Some(_) => {
+                false
+            },
+            _ => {
+                true
+            },
         }
     }
 
@@ -51,10 +57,13 @@ impl<T> Option<T> {
     /// Instead, prefer to use pattern matching and handle the [`None`]
     /// case explicitly.
     fn unwrap(self) -> T {
-        if let Option::Some(inner_value) = self {
-            inner_value
-        } else {
-            revert(0);
+        match self {
+            Option::Some(inner_value) => {
+                inner_value
+            },
+            _ => {
+                revert(0)
+            },
         }
     }
 }

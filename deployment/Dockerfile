@@ -1,5 +1,5 @@
 # Stage 1: Build
-FROM lukemathwalker/cargo-chef:latest-rust-1.60 as chef
+FROM lukemathwalker/cargo-chef:latest-rust-1.62.1 as chef
 WORKDIR /build/
 # hadolint ignore=DL3008
 RUN apt-get update && \
@@ -27,9 +27,12 @@ FROM ubuntu:20.04 as run
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
+    libssl-dev \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /root/
 
 COPY --from=builder /build/target/release/forc .
+
+CMD ["exec", "./forc"]

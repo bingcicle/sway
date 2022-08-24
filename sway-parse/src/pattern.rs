@@ -1,50 +1,32 @@
-use crate::priv_prelude::*;
+use crate::{Parse, ParseBracket, ParseErrorKind, ParseResult, Parser};
 
-#[derive(Clone, Debug)]
-pub enum Pattern {
-    Wildcard {
-        underscore_token: UnderscoreToken,
-    },
-    Var {
-        mutable: Option<MutToken>,
-        name: Ident,
-    },
-    Literal(Literal),
-    Constant(PathExpr),
-    Constructor {
-        path: PathExpr,
-        args: Parens<Punctuated<Pattern, CommaToken>>,
-    },
-    Struct {
-        path: PathExpr,
-        fields: Braces<Punctuated<PatternStructField, CommaToken>>,
-    },
-    Tuple(Parens<Punctuated<Pattern, CommaToken>>),
-}
-
-impl Pattern {
-    pub fn span(&self) -> Span {
-        match self {
-            Pattern::Wildcard { underscore_token } => underscore_token.span(),
-            Pattern::Var { mutable, name } => match mutable {
-                Some(mut_token) => Span::join(mut_token.span(), name.span().clone()),
-                None => name.span().clone(),
-            },
-            Pattern::Literal(literal) => literal.span(),
-            Pattern::Constant(path_expr) => path_expr.span(),
-            Pattern::Constructor { path, args } => Span::join(path.span(), args.span()),
-            Pattern::Struct { path, fields } => Span::join(path.span(), fields.span()),
-            Pattern::Tuple(pat_tuple) => pat_tuple.span(),
-        }
-    }
-}
+use sway_ast::brackets::{Braces, Parens};
+use sway_ast::keywords::{DoubleDotToken, FalseToken, TrueToken};
+use sway_ast::literal::{LitBool, LitBoolType};
+use sway_ast::punctuated::Punctuated;
+use sway_ast::{Literal, PathExpr, Pattern, PatternStructField};
+use sway_types::Spanned;
 
 impl Parse for Pattern {
     fn parse(parser: &mut Parser) -> ParseResult<Pattern> {
-        if let Some(mut_token) = parser.take() {
-            let mutable = Some(mut_token);
+        let ref_token = parser.take();
+        let mut_token = parser.take();
+        if ref_token.is_some() || mut_token.is_some() {
             let name = parser.parse()?;
-            return Ok(Pattern::Var { mutable, name });
+            return Ok(Pattern::Var {
+                reference: ref_token,
+                mutable: mut_token,
+                name,
+            });
+        }
+
+        let lit_bool = |span, kind| Ok(Pattern::Literal(Literal::Bool(LitBool { span, kind })));
+
+        if let Some(ident) = parser.take::<TrueToken>() {
+            return lit_bool(ident.span(), LitBoolType::True);
+        }
+        if let Some(ident) = parser.take::<FalseToken>() {
+            return lit_bool(ident.span(), LitBoolType::False);
         }
         if let Some(literal) = parser.take() {
             return Ok(Pattern::Literal(literal));
@@ -61,10 +43,24 @@ impl Parse for Pattern {
             return Ok(Pattern::Constructor { path, args });
         }
         if let Some(fields) = Braces::try_parse(parser)? {
+            let inner_fields: &Punctuated<_, _> = fields.get();
+            let rest_pattern = inner_fields
+                .value_separator_pairs
+                .iter()
+                .find(|(p, _)| matches!(p, PatternStructField::Rest { token: _ }));
+
+            if let Some((rest_pattern, _)) = rest_pattern {
+                return Err(parser.emit_error_with_span(
+                    ParseErrorKind::UnexpectedRestPattern,
+                    rest_pattern.span(),
+                ));
+            }
+
             return Ok(Pattern::Struct { path, fields });
         }
         match path.try_into_ident() {
             Ok(name) => Ok(Pattern::Var {
+                reference: None,
                 mutable: None,
                 name,
             }),
@@ -73,34 +69,18 @@ impl Parse for Pattern {
     }
 }
 
-#[derive(Clone, Debug)]
-pub struct PatternStructField {
-    pub field_name: Ident,
-    pub pattern_opt: Option<(ColonToken, Box<Pattern>)>,
-}
-
-impl PatternStructField {
-    pub fn span(&self) -> Span {
-        match &self.pattern_opt {
-            Some((_colon_token, pattern)) => {
-                Span::join(self.field_name.span().clone(), pattern.span())
-            }
-            None => self.field_name.span().clone(),
-        }
-    }
-}
-
 impl Parse for PatternStructField {
     fn parse(parser: &mut Parser) -> ParseResult<PatternStructField> {
+        if let Some(token) = parser.take::<DoubleDotToken>() {
+            return Ok(PatternStructField::Rest { token });
+        }
+
         let field_name = parser.parse()?;
         let pattern_opt = match parser.take() {
-            Some(colon_token) => {
-                let pattern = parser.parse()?;
-                Some((colon_token, pattern))
-            }
+            Some(colon_token) => Some((colon_token, parser.parse()?)),
             None => None,
         };
-        Ok(PatternStructField {
+        Ok(PatternStructField::Field {
             field_name,
             pattern_opt,
         })

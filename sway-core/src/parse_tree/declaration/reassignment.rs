@@ -1,6 +1,6 @@
 use crate::parse_tree::Expression;
 
-use sway_types::{span::Span, Ident};
+use sway_types::{span::Span, Ident, Spanned};
 
 /// Represents the left hand side of a reassignment, which could either be a regular variable
 /// expression, denoted by [ReassignmentTarget::VariableExpression], or, a storage field, denoted
@@ -23,18 +23,10 @@ pub struct Reassignment {
 impl Reassignment {
     pub fn lhs_span(&self) -> Span {
         match &self.lhs {
-            ReassignmentTarget::VariableExpression(var) => match **var {
-                Expression::SubfieldExpression { ref span, .. } => span.clone(),
-                Expression::VariableExpression { ref name, .. } => name.span().clone(),
-                _ => {
-                    unreachable!("any other reassignment lhs is invalid and cannot be constructed.")
-                }
-            },
-            ReassignmentTarget::StorageField(ref idents) => {
-                idents.iter().fold(idents[0].span().clone(), |acc, ident| {
-                    Span::join(acc, ident.span().clone())
-                })
-            }
+            ReassignmentTarget::VariableExpression(var) => var.span.clone(),
+            ReassignmentTarget::StorageField(ref idents) => idents
+                .iter()
+                .fold(idents[0].span(), |acc, ident| Span::join(acc, ident.span())),
         }
     }
 }

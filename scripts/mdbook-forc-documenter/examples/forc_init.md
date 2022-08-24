@@ -1,5 +1,6 @@
+<!-- markdownlint-disable MD041 -->
 
-## EXAMPLE:
+## EXAMPLE
 
 ```console
 $ forc init my-fuel-project

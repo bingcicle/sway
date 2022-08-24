@@ -4,10 +4,11 @@ use clap::Parser;
 use std::io::{BufRead, BufReader};
 use std::process;
 use std::thread;
+use tracing::{error, info};
 
 /// Run Rust-based tests on current project.
 /// As of now, `forc test` is a simple wrapper on
-/// `cargo test`; `forc init` also creates a rust
+/// `cargo test`; `forc new` also creates a rust
 /// package under your project, named `tests`.
 /// You can opt to either run these Rust tests by
 /// using `forc test` or going inside the package
@@ -84,10 +85,10 @@ pub(crate) fn exec(command: Command) -> Result<()> {
 
     // Reading stderr on a separate thread so we keep things non-blocking
     let thread = thread::spawn(move || {
-        err.lines().for_each(|line| println!("{}", line.unwrap()));
+        err.lines().for_each(|line| error!("{}", line.unwrap()));
     });
 
-    out.lines().for_each(|line| println!("{}", line.unwrap()));
+    out.lines().for_each(|line| info!("{}", line.unwrap()));
     thread.join().unwrap();
 
     let child_success = match child.try_wait() {

@@ -1,8 +1,9 @@
-use crate::{cli::UpdateCommand, utils::SWAY_GIT_TAG};
+use crate::cli::UpdateCommand;
 use anyhow::{anyhow, Result};
 use forc_pkg::{self as pkg, lock, Lock, ManifestFile};
 use forc_util::lock_path;
 use std::{fs, path::PathBuf};
+use tracing::info;
 
 /// Running `forc update` will check for updates for the entire dependency graph and commit new
 /// semver-compatible versions to the `Forc.lock` file. For git dependencies, the commit is updated
@@ -31,11 +32,11 @@ pub async fn update(command: UpdateCommand) -> Result<()> {
         None => std::env::current_dir()?,
     };
 
-    let manifest = ManifestFile::from_dir(&this_dir, SWAY_GIT_TAG)?;
+    let manifest = ManifestFile::from_dir(&this_dir)?;
     let lock_path = lock_path(manifest.dir());
     let old_lock = Lock::from_path(&lock_path).ok().unwrap_or_default();
     let offline = false;
-    let new_plan = pkg::BuildPlan::new(&manifest, SWAY_GIT_TAG, offline)?;
+    let new_plan = pkg::BuildPlan::from_manifest(&manifest, offline)?;
     let new_lock = Lock::from_graph(new_plan.graph());
     let diff = new_lock.diff(&old_lock);
     lock::print_diff(&manifest.project.name, &diff);
@@ -45,9 +46,9 @@ pub async fn update(command: UpdateCommand) -> Result<()> {
         let string = toml::ser::to_string_pretty(&new_lock)
             .map_err(|e| anyhow!("failed to serialize lock file: {}", e))?;
         fs::write(&lock_path, &string).map_err(|e| anyhow!("failed to write lock file: {}", e))?;
-        println!("   Created new lock file at {}", lock_path.display());
+        info!("   Created new lock file at {}", lock_path.display());
     } else {
-        println!(" `--check` enabled: `Forc.lock` was not changed");
+        info!(" `--check` enabled: `Forc.lock` was not changed");
     }
 
     Ok(())

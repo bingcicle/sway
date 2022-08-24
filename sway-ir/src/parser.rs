@@ -19,8 +19,6 @@ pub fn parse(input: &str) -> Result<Context, IrError> {
 // -------------------------------------------------------------------------------------------------
 
 mod ir_builder {
-    use std::path::PathBuf;
-
     use sway_types::{ident::Ident, span::Span};
 
     type MdIdxRef = u64;
@@ -31,12 +29,12 @@ mod ir_builder {
                 = _ s:script() eoi() {
                     s
                 }
-                / _ s:contract() eoi() {
-                    s
+                / _ c:contract() eoi() {
+                    c
                 }
 
             rule script() -> IrAstModule
-                = "script" _ "{" _ fn_decls:fn_decl()* "}" _ metadata:metadata_decl()* {
+                = "script" _ "{" _ fn_decls:fn_decl()* "}" _ metadata:metadata_decls() {
                     IrAstModule {
                         kind: crate::module::Kind::Script,
                         fn_decls,
@@ -45,7 +43,7 @@ mod ir_builder {
                 }
 
             rule contract() -> IrAstModule
-                = "contract" _ "{" _ fn_decls:fn_decl()* "}" _ metadata:metadata_decl()* {
+                = "contract" _ "{" _ fn_decls:fn_decl()* "}" _ metadata:metadata_decls() {
                     IrAstModule {
                         kind: crate::module::Kind::Contract,
                         fn_decls,
@@ -55,7 +53,8 @@ mod ir_builder {
 
             rule fn_decl() -> IrAstFnDecl
                 = "fn" _ name:id() _ selector:selector_id()? _ "(" _
-                      args:(fn_arg() ** comma()) ")" _ "->" _ ret_type:ast_ty() "{" _
+                      args:(fn_arg() ** comma()) ")" _ "->" _ ret_type:ast_ty()
+                          metadata:comma_metadata_idx()? "{" _
                       locals:fn_local()*
                       blocks:block_decl()*
                   "}" _ {
@@ -63,6 +62,7 @@ mod ir_builder {
                         name,
                         args,
                         ret_type,
+                        metadata,
                         locals,
                         blocks,
                         selector
@@ -98,11 +98,11 @@ mod ir_builder {
                 }
 
             rule instr_decl() -> IrAstInstruction
-                = value_name:value_assign()? op:operation() meta_idx:comma_metadata_idx()? {
+                = value_name:value_assign()? op:operation() metadata:comma_metadata_idx()? {
                     IrAstInstruction {
                         value_name,
                         op,
-                        meta_idx,
+                        metadata,
                     }
                 }
 
@@ -112,8 +112,8 @@ mod ir_builder {
                 }
 
             rule metadata_idx() -> MdIdxRef
-                = "!" i:decimal() {
-                    i
+                = "!" idx:decimal() {
+                    idx
                 }
 
             rule comma_metadata_idx() -> MdIdxRef
@@ -122,7 +122,8 @@ mod ir_builder {
                 }
 
             rule operation() -> IrAstOperation
-                = op_asm()
+                = op_addr_of()
+                / op_asm()
                 / op_branch()
                 / op_bitcast()
                 / op_call()
@@ -132,9 +133,12 @@ mod ir_builder {
                 / op_contract_call()
                 / op_extract_element()
                 / op_extract_value()
+                / op_get_storage_key()
                 / op_get_ptr()
+                / op_gtf()
                 / op_insert_element()
                 / op_insert_value()
+                / op_int_to_ptr()
                 / op_load()
                 / op_nop()
                 / op_phi()
@@ -145,6 +149,11 @@ mod ir_builder {
                 / op_state_store_quad_word()
                 / op_state_store_word()
                 / op_store()
+
+            rule op_addr_of() -> IrAstOperation
+                = "addr_of" _ val:id() {
+                    IrAstOperation::AddrOf(val)
+                }
 
             rule op_asm() -> IrAstOperation
                 = "asm" _ "(" _ args:(asm_arg() ** comma()) ")" _ ret:asm_ret()? meta_idx:comma_metadata_idx()? "{" _
@@ -185,8 +194,8 @@ mod ir_builder {
                 }
 
             rule op_const() -> IrAstOperation
-                = "const" _ ast_ty() cv:constant() {
-                    IrAstOperation::Const(cv)
+                = "const" _ val_ty:ast_ty() cv:constant() {
+                    IrAstOperation::Const(val_ty, cv)
                 }
 
             rule op_contract_call() -> IrAstOperation
@@ -206,10 +215,20 @@ mod ir_builder {
                     IrAstOperation::ExtractValue(name, ty, idcs)
                 }
 
+            rule op_get_storage_key() -> IrAstOperation
+                = "get_storage_key" _ {
+                    IrAstOperation::GetStorageKey()
+                }
+
             rule op_get_ptr() -> IrAstOperation
                 = "get_ptr" _ mut_ptr() ty:ast_ty() name:id()
                     comma() ptr() ty:ast_ty() comma() offset:(decimal())  {
                     IrAstOperation::GetPtr(name, ty, offset)
+                }
+
+            rule op_gtf() -> IrAstOperation
+                = "gtf" _ index:id() comma() tx_field_id:decimal()  {
+                    IrAstOperation::Gtf(index, tx_field_id)
                 }
 
             rule op_insert_element() -> IrAstOperation
@@ -220,6 +239,11 @@ mod ir_builder {
             rule op_insert_value() -> IrAstOperation
                 = "insert_value" _ aval:id() comma() ty:ast_ty() comma() ival:id() comma() idcs:(decimal() ++ comma()) {
                     IrAstOperation::InsertValue(aval, ty, ival, idcs)
+                }
+
+            rule op_int_to_ptr() -> IrAstOperation
+                = "int_to_ptr" _ val:id() "to" _ ty:ast_ty() {
+                    IrAstOperation::IntToPtr(val, ty)
                 }
 
             rule op_load() -> IrAstOperation
@@ -348,10 +372,10 @@ mod ir_builder {
             rule str_char() -> u8
                 // Match any of the printable characters except '"' and '\'.
                 = c:$([' ' | '!' | '#'..='[' | ']'..='~']) {
-                    *c.as_bytes().get(0).unwrap()
+                    *c.as_bytes().first().unwrap()
                 }
                 / "\\x" h:hex_digit() l:hex_digit() {
-                    (dbg!(h) << 4) | dbg!(l)
+                    (h << 4) | l
                 }
 
             //  There may be a better way to do this, dunno.  In `str_char()` we're parsing '\xHH'
@@ -362,10 +386,10 @@ mod ir_builder {
             //  right offset.  Fiddly.
             rule hex_digit() -> u8
                 = d:$(['0'..='9']) {
-                    d.as_bytes().get(0).unwrap() - b'0'
+                    d.as_bytes().first().unwrap() - b'0'
                 }
                 / d:$(['a'..='f' | 'A'..='F']) {
-                    (d.as_bytes().get(0).unwrap() | 0x20) - b'a' + 10
+                    (d.as_bytes().first().unwrap() | 0x20) - b'a' + 10
                 }
 
             rule array_const() -> IrAstConstValue
@@ -376,7 +400,7 @@ mod ir_builder {
                 }
 
             rule struct_const() -> IrAstConstValue
-                = "{" _ flds:(field_or_element_const() ++ comma()) "}" _ {
+                = "{" _ flds:(field_or_element_const() ** comma()) "}" _ {
                     IrAstConstValue::Struct(flds)
                 }
 
@@ -409,7 +433,7 @@ mod ir_builder {
                 }
 
             rule struct_ty() -> IrAstTy
-                = "{" _ tys:(ast_ty() ++ comma()) "}" _ {
+                = "{" _ tys:(ast_ty() ** comma()) "}" _ {
                     IrAstTy::Struct(tys)
                 }
 
@@ -423,17 +447,46 @@ mod ir_builder {
                     Ident::new(Span::new(id.into(), 0, id.len(), None).unwrap())
                 }
 
+            // Metadata decls are sensitive to the newlines since the assignee idx could belong to
+            // the previous decl otherwise.  e.g.,
+            //
+            //   !1 = blah !2
+            //   !2 = 42
+            //
+            // If we did not make newlines significant we could parse the first struct as
+            // `!1 = blah !2 !2` and then get an error on the following `=`.
+            //
+            // An alternative is to put some other delimiter around naked indices, but using
+            // newlines below hasn't been that painful, so that'll do for now.
+
+            rule metadata_decls() -> Vec<(MdIdxRef, IrMetadatum)>
+                = ds:(metadata_decl() ** nl()) _ {
+                    ds
+                }
+
             rule metadata_decl() -> (MdIdxRef, IrMetadatum)
-                = "!" idx:decimal() "=" _ item:metadata_item() {
+                = idx:metadata_idx() "=" _ item:metadata_item() {
                     (idx, item)
                 }
 
+            // This rule (uniquely) does NOT discard the newline whitespace. `__` matches only
+            // spaces.
             rule metadata_item() -> IrMetadatum
-                = "filepath" _ ['"'] path:$(([^ '"' | '\\'] / ['\\'] ['\\' | '"' ])+) ['"'] _ {
-                    IrMetadatum::FilePath(PathBuf::from(path))
+                = i:dec_digits() __ {
+                    IrMetadatum::Integer(i)
                 }
-                / "span" _ "!" li:decimal() s:decimal() e:decimal() {
-                    IrMetadatum::Span { loc_idx: li, start: s as usize, end: e as usize }
+                / "!" idx:dec_digits() __ {
+                    IrMetadatum::Index(idx)
+                }
+                / ['"'] s:$(([^ '"' | '\\'] / ['\\'] ['\\' | '"' ])+) ['"'] __ {
+                    IrMetadatum::String(s.to_owned())
+                }
+                / tag:$(id_char0() id_char()*) __ els:metadata_item()* {
+                    IrMetadatum::Struct(tag.to_owned(), els)
+                }
+                / "(" _ els:metadata_idx()*<2,> ")" __ {
+                    // Lists must contain at least 2 items, otherwise they needn't be lists.
+                    IrMetadatum::List(els)
                 }
 
             rule id_char0()
@@ -443,7 +496,14 @@ mod ir_builder {
                 = quiet!{ id_char0() / ['0'..='9'] }
 
             rule decimal() -> u64
-                = ds:$("0" / ['1'..='9'] ['0'..='9']*) _ {
+                = d:dec_digits() _ {
+                    d
+                }
+
+            // String of decimal digits without discarding whitespace. (Useful for newline
+            // sensitive metadata).
+            rule dec_digits() -> u64
+                = ds:$("0" / ['1'..='9'] ['0'..='9']*) {
                     ds.parse::<u64>().unwrap()
                 }
 
@@ -459,11 +519,13 @@ mod ir_builder {
                 = quiet!{ "," _ }
 
             rule _()
-                = quiet!{ (ws() / comment())* }
+                = quiet!{ (space() / nl() / comment())* }
 
-            rule ws()
+            rule __()
+                = quiet!{ (space() / comment())* }
+
+            rule space()
                 = [' ' | '\t']
-                / nl()
 
             rule nl()
                 = ['\n' | '\r']
@@ -481,7 +543,7 @@ mod ir_builder {
     use crate::{
         asm::{AsmArg, AsmInstruction},
         block::Block,
-        constant::Constant,
+        constant::{Constant, ConstantValue},
         context::Context,
         error::IrError,
         function::Function,
@@ -505,6 +567,7 @@ mod ir_builder {
         name: String,
         args: Vec<(IrAstTy, String, Option<MdIdxRef>)>,
         ret_type: IrAstTy,
+        metadata: Option<MdIdxRef>,
         locals: Vec<(IrAstTy, String, bool, Option<IrAstOperation>)>,
         blocks: Vec<IrAstBlock>,
         selector: Option<[u8; 4]>,
@@ -520,11 +583,12 @@ mod ir_builder {
     struct IrAstInstruction {
         value_name: Option<String>,
         op: IrAstOperation,
-        meta_idx: Option<MdIdxRef>,
+        metadata: Option<MdIdxRef>,
     }
 
     #[derive(Debug)]
     enum IrAstOperation {
+        AddrOf(String),
         Asm(
             Vec<(Ident, Option<IrAstAsmArgInit>)>,
             IrAstTy,
@@ -537,13 +601,16 @@ mod ir_builder {
         Call(String, Vec<String>),
         Cbr(String, String, String),
         Cmp(String, String, String),
-        Const(IrAstConst),
+        Const(IrAstTy, IrAstConst),
         ContractCall(IrAstTy, String, String, String, String, String),
         ExtractElement(String, IrAstTy, String),
         ExtractValue(String, IrAstTy, Vec<u64>),
+        GetStorageKey(),
         GetPtr(String, IrAstTy, u64),
+        Gtf(String, u64),
         InsertElement(String, IrAstTy, String, String),
         InsertValue(String, IrAstTy, String, Vec<u64>),
+        IntToPtr(String, IrAstTy),
         Load(String),
         Nop,
         Phi(Vec<(String, String)>),
@@ -589,50 +656,53 @@ mod ir_builder {
     }
 
     impl IrAstConstValue {
-        fn as_constant(&self, context: &mut Context) -> Constant {
+        fn as_constant_value(&self, context: &mut Context) -> ConstantValue {
             match self {
-                IrAstConstValue::Undef(ty) => {
-                    let ty = ty.to_ir_type(context);
-                    Constant::new_undef(context, ty)
-                }
-                IrAstConstValue::Unit => Constant::new_unit(),
-                IrAstConstValue::Bool(b) => Constant::new_bool(*b),
-                IrAstConstValue::B256(bs) => Constant::new_b256(*bs),
-                IrAstConstValue::Number(n) => Constant::new_uint(64, *n),
-                IrAstConstValue::String(bs) => Constant::new_string(bs.clone()),
+                IrAstConstValue::Undef(_) => ConstantValue::Undef,
+                IrAstConstValue::Unit => ConstantValue::Unit,
+                IrAstConstValue::Bool(b) => ConstantValue::Bool(*b),
+                IrAstConstValue::B256(bs) => ConstantValue::B256(*bs),
+                IrAstConstValue::Number(n) => ConstantValue::Uint(*n),
+                IrAstConstValue::String(bs) => ConstantValue::String(bs.clone()),
                 IrAstConstValue::Array(el_ty, els) => {
-                    let els: Vec<_> = els.iter().map(|cv| cv.value.as_constant(context)).collect();
-                    let el_ty = el_ty.to_ir_type(context);
-                    let array = Aggregate::new_array(context, el_ty, els.len() as u64);
-                    Constant::new_array(&array, els)
+                    let els: Vec<_> = els
+                        .iter()
+                        .map(|cv| cv.value.as_constant(context, el_ty.clone()))
+                        .collect();
+                    ConstantValue::Array(els)
                 }
                 IrAstConstValue::Struct(flds) => {
-                    // To Make a Constant I need to create an aggregate, which requires a context.
-                    let (types, fields): (Vec<_>, Vec<_>) = flds
+                    let fields: Vec<_> = flds
                         .iter()
-                        .map(|(ty, cv)| (ty.to_ir_type(context), cv.value.as_constant(context)))
-                        .unzip();
-                    let aggregate = Aggregate::new_struct(context, types);
-                    Constant::new_struct(&aggregate, fields)
+                        .map(|(ty, cv)| cv.value.as_constant(context, ty.clone()))
+                        .collect::<Vec<_>>();
+                    ConstantValue::Struct(fields)
                 }
             }
         }
 
-        fn as_value(&self, context: &mut Context, span_md_idx: Option<MetadataIndex>) -> Value {
+        fn as_constant(&self, context: &mut Context, val_ty: IrAstTy) -> Constant {
+            Constant {
+                ty: val_ty.to_ir_type(context),
+                value: self.as_constant_value(context),
+            }
+        }
+
+        fn as_value(&self, context: &mut Context, val_ty: IrAstTy) -> Value {
             match self {
                 IrAstConstValue::Undef(_) => unreachable!("Can't convert 'undef' to a value."),
-                IrAstConstValue::Unit => Constant::get_unit(context, span_md_idx),
-                IrAstConstValue::Bool(b) => Constant::get_bool(context, *b, span_md_idx),
-                IrAstConstValue::B256(bs) => Constant::get_b256(context, *bs, span_md_idx),
-                IrAstConstValue::Number(n) => Constant::get_uint(context, 64, *n, span_md_idx),
-                IrAstConstValue::String(s) => Constant::get_string(context, s.clone(), span_md_idx),
+                IrAstConstValue::Unit => Constant::get_unit(context),
+                IrAstConstValue::Bool(b) => Constant::get_bool(context, *b),
+                IrAstConstValue::B256(bs) => Constant::get_b256(context, *bs),
+                IrAstConstValue::Number(n) => Constant::get_uint(context, 64, *n),
+                IrAstConstValue::String(s) => Constant::get_string(context, s.clone()),
                 IrAstConstValue::Array(..) => {
-                    let array_const = self.as_constant(context);
-                    Constant::get_array(context, array_const, span_md_idx)
+                    let array_const = self.as_constant(context, val_ty);
+                    Constant::get_array(context, array_const)
                 }
                 IrAstConstValue::Struct(_) => {
-                    let struct_const = self.as_constant(context);
-                    Constant::get_struct(context, struct_const, span_md_idx)
+                    let struct_const = self.as_constant(context, val_ty);
+                    Constant::get_struct(context, struct_const)
                 }
             }
         }
@@ -683,401 +753,475 @@ mod ir_builder {
 
     #[derive(Debug)]
     enum IrMetadatum {
-        FilePath(PathBuf),
-        Span {
-            loc_idx: MdIdxRef,
-            start: usize,
-            end: usize,
-        },
+        /// A number.
+        Integer(u64),
+        /// A reference to another metadatum.
+        Index(MdIdxRef),
+        /// An arbitrary string (e.g., a path).
+        String(String),
+        /// A tagged collection of metadata (e.g., `span !1 10 20`).
+        Struct(String, Vec<IrMetadatum>),
+        /// A collection of indices to other metadata, for attaching multiple metadata to values.
+        List(Vec<MdIdxRef>),
     }
 
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-    use std::{collections::HashMap, iter::FromIterator, sync::Arc};
+    use std::{collections::HashMap, iter::FromIterator};
 
     pub(super) fn build_context(ir_ast_mod: IrAstModule) -> Result<Context, IrError> {
         let mut ctx = Context::default();
-        let module = Module::new(&mut ctx, ir_ast_mod.kind);
-        let md_map = build_metadata_map(&mut ctx, &ir_ast_mod.metadata);
-        let mut unresolved_calls = Vec::new();
+        let mut builder = IrBuilder {
+            module: Module::new(&mut ctx, ir_ast_mod.kind),
+            md_map: build_metadata_map(&mut ctx, ir_ast_mod.metadata),
+            unresolved_calls: Vec::new(),
+        };
+
         for fn_decl in ir_ast_mod.fn_decls {
-            build_add_fn_decl(&mut ctx, module, fn_decl, &md_map, &mut unresolved_calls)?;
+            builder.add_fn_decl(&mut ctx, fn_decl)?;
         }
-        resolve_calls(&mut ctx, unresolved_calls)?;
+        builder.resolve_calls(&mut ctx)?;
+
         Ok(ctx)
     }
 
-    #[allow(clippy::type_complexity)]
-    fn build_add_fn_decl(
-        context: &mut Context,
+    struct IrBuilder {
         module: Module,
-        fn_decl: IrAstFnDecl,
-        md_map: &HashMap<MdIdxRef, MetadataIndex>,
-        unresolved_calls: &mut Vec<(Block, Value, String, Vec<Value>, Option<MetadataIndex>)>,
-    ) -> Result<(), IrError> {
-        let args: Vec<(String, Type, Option<MetadataIndex>)> = fn_decl
-            .args
-            .iter()
-            .map(|(ty, name, md_idx)| {
-                (
-                    name.into(),
-                    ty.to_ir_type(context),
-                    md_idx.map(|mdi| md_map.get(&mdi).copied().unwrap()),
-                )
-            })
-            .collect();
-        let ret_type = fn_decl.ret_type.to_ir_type(context);
-        let func = Function::new(
-            context,
-            module,
-            fn_decl.name,
-            args.clone(),
-            ret_type,
-            fn_decl.selector,
-            false,
-        );
-
-        // Gather all the (new) arg values by name into a map.
-        let mut arg_map: HashMap<String, Value> =
-            HashMap::from_iter(args.into_iter().map(|(name, _, _)| {
-                let arg_val = func.get_arg(context, &name).unwrap();
-                (name, arg_val)
-            }));
-        let mut ptr_map = HashMap::<String, Pointer>::new();
-        for (ty, name, is_mutable, initializer) in fn_decl.locals {
-            let initializer = initializer.map(|const_init| {
-                if let IrAstOperation::Const(val) = const_init {
-                    val.value.as_constant(context)
-                } else {
-                    unreachable!("BUG! Initializer must be a const value.");
-                }
-            });
-            let ty = ty.to_ir_type(context);
-            ptr_map.insert(
-                name.clone(),
-                func.new_local_ptr(context, name, ty, is_mutable, initializer)?,
-            );
-        }
-
-        // The entry block is already created, we don't want to recrate it.
-        let named_blocks = HashMap::from_iter(fn_decl.blocks.iter().map(|block| {
-            (
-                block.label.clone(),
-                if block.label == "entry" {
-                    func.get_entry_block(context)
-                } else {
-                    func.create_block(context, Some(block.label.clone()))
-                },
-            )
-        }));
-
-        for block in fn_decl.blocks {
-            build_add_block_instructions(
-                context,
-                block,
-                &named_blocks,
-                &ptr_map,
-                &mut arg_map,
-                md_map,
-                unresolved_calls,
-            );
-        }
-        Ok(())
+        md_map: HashMap<MdIdxRef, MetadataIndex>,
+        unresolved_calls: Vec<PendingCall>,
     }
 
-    #[allow(clippy::type_complexity)]
-    fn build_add_block_instructions(
-        context: &mut Context,
-        ir_block: IrAstBlock,
-        named_blocks: &HashMap<String, Block>,
-        ptr_map: &HashMap<String, Pointer>,
-        val_map: &mut HashMap<String, Value>,
-        md_map: &HashMap<MdIdxRef, MetadataIndex>,
-        unresolved_calls: &mut Vec<(Block, Value, String, Vec<Value>, Option<MetadataIndex>)>,
-    ) {
-        let block = named_blocks.get(&ir_block.label).unwrap();
-        for ins in ir_block.instructions {
-            let opt_ins_md_idx = ins.meta_idx.map(|mdi| md_map.get(&mdi).unwrap()).copied();
-            let ins_val = match ins.op {
-                IrAstOperation::Asm(args, return_type, return_name, ops, meta_idx) => {
-                    let args = args
-                        .into_iter()
-                        .map(|(name, opt_init)| AsmArg {
-                            name,
-                            initializer: opt_init.map(|init| match init {
-                                IrAstAsmArgInit::Var(var) => val_map.get(&var).cloned().unwrap(),
-                                IrAstAsmArgInit::Imm(cv) => cv.value.as_value(
-                                    context,
-                                    md_map.get(cv.meta_idx.as_ref().unwrap()).copied(),
-                                ),
-                            }),
-                        })
-                        .collect();
-                    let body = ops
-                        .into_iter()
-                        .map(
-                            |IrAstAsmOp {
-                                 name,
-                                 args,
-                                 imm,
-                                 meta_idx,
-                             }| AsmInstruction {
-                                name,
-                                args,
-                                immediate: imm,
-                                span_md_idx: meta_idx
-                                    .as_ref()
-                                    .and_then(|meta_idx| md_map.get(meta_idx).copied()),
-                            },
-                        )
-                        .collect();
-                    let md_idx = meta_idx.map(|mdi| md_map.get(&mdi).unwrap()).copied();
-                    let return_type = return_type.to_ir_type(context);
-                    block
-                        .ins(context)
-                        .asm_block(args, body, return_type, return_name, md_idx)
-                }
-                IrAstOperation::BitCast(val, ty) => {
-                    let to_ty = ty.to_ir_type(context);
-                    block
-                        .ins(context)
-                        .bitcast(*val_map.get(&val).unwrap(), to_ty, opt_ins_md_idx)
-                }
-                IrAstOperation::Br(to_block_name) => {
-                    let to_block = named_blocks.get(&to_block_name).unwrap();
-                    block.ins(context).branch(*to_block, None, opt_ins_md_idx)
-                }
-                IrAstOperation::Call(callee, args) => {
-                    // We can't resolve calls to other functions until we've done a first pass and
-                    // created them first.  So we can insert a NOP here, save the call params and
-                    // replace it with a CALL in a second pass.
-                    let nop = block.ins(context).nop();
-                    unresolved_calls.push((
-                        *block,
-                        nop,
-                        callee,
-                        args.iter()
-                            .map(|arg_name| val_map.get(arg_name).unwrap())
-                            .cloned()
-                            .collect::<Vec<Value>>(),
-                        opt_ins_md_idx,
-                    ));
-                    nop
-                }
-                IrAstOperation::Cbr(cond_val_name, true_block_name, false_block_name) => {
-                    block.ins(context).conditional_branch(
-                        *val_map.get(&cond_val_name).unwrap(),
-                        *named_blocks.get(&true_block_name).unwrap(),
-                        *named_blocks.get(&false_block_name).unwrap(),
-                        None,
-                        opt_ins_md_idx,
-                    )
-                }
-                IrAstOperation::Cmp(pred_str, lhs, rhs) => block.ins(context).cmp(
-                    match pred_str.as_str() {
-                        "eq" => Predicate::Equal,
-                        _ => unreachable!("Bug in `cmp` predicate rule."),
-                    },
-                    *val_map.get(&lhs).unwrap(),
-                    *val_map.get(&rhs).unwrap(),
-                    opt_ins_md_idx,
-                ),
-                IrAstOperation::Const(val) => val.value.as_value(context, opt_ins_md_idx),
-                IrAstOperation::ContractCall(return_type, name, params, coins, asset_id, gas) => {
-                    let ir_ty = return_type.to_ir_type(context);
-                    block.ins(context).contract_call(
-                        ir_ty,
-                        name,
-                        *val_map.get(&params).unwrap(),
-                        *val_map.get(&coins).unwrap(),
-                        *val_map.get(&asset_id).unwrap(),
-                        *val_map.get(&gas).unwrap(),
-                        opt_ins_md_idx,
-                    )
-                }
-                IrAstOperation::ExtractElement(aval, ty, idx) => {
-                    let ir_ty = ty.to_ir_aggregate_type(context);
-                    block.ins(context).extract_element(
-                        *val_map.get(&aval).unwrap(),
-                        ir_ty,
-                        *val_map.get(&idx).unwrap(),
-                        opt_ins_md_idx,
-                    )
-                }
-                IrAstOperation::ExtractValue(val, ty, idcs) => {
-                    let ir_ty = ty.to_ir_aggregate_type(context);
-                    block.ins(context).extract_value(
-                        *val_map.get(&val).unwrap(),
-                        ir_ty,
-                        idcs,
-                        opt_ins_md_idx,
-                    )
-                }
-                IrAstOperation::GetPtr(base_ptr, ptr_ty, offset) => {
-                    let ptr_ir_ty = ptr_ty.to_ir_type(context);
-                    block.ins(context).get_ptr(
-                        *ptr_map.get(&base_ptr).unwrap(),
-                        ptr_ir_ty,
-                        offset,
-                        opt_ins_md_idx,
-                    )
-                }
-                IrAstOperation::InsertElement(aval, ty, val, idx) => {
-                    let ir_ty = ty.to_ir_aggregate_type(context);
-                    block.ins(context).insert_element(
-                        *val_map.get(&aval).unwrap(),
-                        ir_ty,
-                        *val_map.get(&val).unwrap(),
-                        *val_map.get(&idx).unwrap(),
-                        opt_ins_md_idx,
-                    )
-                }
-                IrAstOperation::InsertValue(aval, ty, ival, idcs) => {
-                    let ir_ty = ty.to_ir_aggregate_type(context);
-                    block.ins(context).insert_value(
-                        *val_map.get(&aval).unwrap(),
-                        ir_ty,
-                        *val_map.get(&ival).unwrap(),
-                        idcs,
-                        opt_ins_md_idx,
-                    )
-                }
-                IrAstOperation::Load(src_name) => block
-                    .ins(context)
-                    .load(*val_map.get(&src_name).unwrap(), opt_ins_md_idx),
-                IrAstOperation::Nop => block.ins(context).nop(),
-                IrAstOperation::Phi(pairs) => {
-                    for (block_name, val_name) in pairs {
-                        block.add_phi(
-                            context,
-                            *named_blocks.get(&block_name).unwrap(),
-                            *val_map.get(&val_name).unwrap(),
-                        );
-                    }
-                    block.get_phi(context)
-                }
-                IrAstOperation::ReadRegister(reg_name) => block.ins(context).read_register(
-                    match reg_name.as_str() {
-                        "of" => Register::Of,
-                        "pc" => Register::Pc,
-                        "ssp" => Register::Ssp,
-                        "sp" => Register::Sp,
-                        "fp" => Register::Fp,
-                        "hp" => Register::Hp,
-                        "err" => Register::Error,
-                        "ggas" => Register::Ggas,
-                        "cgas" => Register::Cgas,
-                        "bal" => Register::Bal,
-                        "is" => Register::Is,
-                        "ret" => Register::Ret,
-                        "retl" => Register::Retl,
-                        "flag" => Register::Flag,
-                        _ => unreachable!("Guaranteed by grammar."),
-                    },
-                    opt_ins_md_idx,
-                ),
-                IrAstOperation::Ret(ty, ret_val_name) => {
-                    let ty = ty.to_ir_type(context);
-                    block
-                        .ins(context)
-                        .ret(*val_map.get(&ret_val_name).unwrap(), ty, opt_ins_md_idx)
-                }
-                IrAstOperation::StateLoadQuadWord(dst, key) => {
-                    block.ins(context).state_load_quad_word(
-                        *val_map.get(&dst).unwrap(),
-                        *val_map.get(&key).unwrap(),
-                        opt_ins_md_idx,
-                    )
-                }
-                IrAstOperation::StateLoadWord(key) => block
-                    .ins(context)
-                    .state_load_word(*val_map.get(&key).unwrap(), opt_ins_md_idx),
-                IrAstOperation::StateStoreQuadWord(src, key) => {
-                    block.ins(context).state_store_quad_word(
-                        *val_map.get(&src).unwrap(),
-                        *val_map.get(&key).unwrap(),
-                        opt_ins_md_idx,
-                    )
-                }
-                IrAstOperation::StateStoreWord(src, key) => block.ins(context).state_store_word(
-                    *val_map.get(&src).unwrap(),
-                    *val_map.get(&key).unwrap(),
-                    opt_ins_md_idx,
-                ),
-                IrAstOperation::Store(stored_val_name, dst_val_name) => block.ins(context).store(
-                    *val_map.get(&dst_val_name).unwrap(),
-                    *val_map.get(&stored_val_name).unwrap(),
-                    opt_ins_md_idx,
-                ),
+    struct PendingCall {
+        call_val: Value,
+        callee: String,
+    }
+
+    impl IrBuilder {
+        fn add_fn_decl(
+            &mut self,
+            context: &mut Context,
+            fn_decl: IrAstFnDecl,
+        ) -> Result<(), IrError> {
+            let convert_md_idx = |opt_md_idx: &Option<MdIdxRef>| {
+                opt_md_idx.map(|mdi| self.md_map.get(&mdi).copied().unwrap())
             };
-            ins.value_name.map(|vn| val_map.insert(vn, ins_val));
-        }
-    }
+            let args: Vec<(String, Type, Option<MetadataIndex>)> = fn_decl
+                .args
+                .iter()
+                .map(|(ty, name, md_idx)| {
+                    (name.into(), ty.to_ir_type(context), convert_md_idx(md_idx))
+                })
+                .collect();
+            let ret_type = fn_decl.ret_type.to_ir_type(context);
+            let func = Function::new(
+                context,
+                self.module,
+                fn_decl.name,
+                args.clone(),
+                ret_type,
+                fn_decl.selector,
+                false,
+                convert_md_idx(&fn_decl.metadata),
+            );
 
-    fn build_metadata_map(
-        context: &mut Context,
-        ir_metadata: &[(MdIdxRef, IrMetadatum)],
-    ) -> HashMap<MdIdxRef, MetadataIndex> {
-        let mut md_map = ir_metadata
-            .iter()
-            .filter_map(|(idx_ref, md)| match md {
-                IrMetadatum::FilePath(path) => Some((idx_ref, path)),
-                _otherwise => None,
-            })
-            .fold(HashMap::new(), |mut md_map, (idx_ref, path)| {
-                let path_content = Arc::from(std::fs::read_to_string(path).unwrap().as_str());
-                let md_idx = context.metadata.insert(Metadatum::FileLocation(
-                    Arc::new(path.clone()),
-                    path_content,
-                ));
-                md_map.insert(*idx_ref, MetadataIndex(md_idx));
-                md_map
-            });
-
-        for (idx_ref, md) in ir_metadata {
-            if let IrMetadatum::Span {
-                loc_idx,
-                start,
-                end,
-            } = md
-            {
-                let span_idx = context.metadata.insert(Metadatum::Span {
-                    loc_idx: md_map.get(loc_idx).copied().unwrap(),
-                    start: *start,
-                    end: *end,
+            // Gather all the (new) arg values by name into a map.
+            let mut arg_map: HashMap<String, Value> =
+                HashMap::from_iter(args.into_iter().map(|(name, _, _)| {
+                    let arg_val = func.get_arg(context, &name).unwrap();
+                    (name, arg_val)
+                }));
+            let mut ptr_map = HashMap::<String, Pointer>::new();
+            for (ty, name, is_mutable, initializer) in fn_decl.locals {
+                let initializer = initializer.map(|const_init| {
+                    if let IrAstOperation::Const(val_ty, val) = const_init {
+                        val.value.as_constant(context, val_ty)
+                    } else {
+                        unreachable!("BUG! Initializer must be a const value.");
+                    }
                 });
-                md_map.insert(*idx_ref, MetadataIndex(span_idx));
+                let ty = ty.to_ir_type(context);
+                ptr_map.insert(
+                    name.clone(),
+                    func.new_local_ptr(context, name, ty, is_mutable, initializer)?,
+                );
+            }
+
+            // The entry block is already created, we don't want to recreate it.
+            let named_blocks = HashMap::from_iter(fn_decl.blocks.iter().map(|block| {
+                (
+                    block.label.clone(),
+                    if block.label == "entry" {
+                        func.get_entry_block(context)
+                    } else {
+                        func.create_block(context, Some(block.label.clone()))
+                    },
+                )
+            }));
+
+            for block in fn_decl.blocks {
+                self.add_block_instructions(context, block, &named_blocks, &ptr_map, &mut arg_map);
+            }
+            Ok(())
+        }
+
+        fn add_block_instructions(
+            &mut self,
+            context: &mut Context,
+            ir_block: IrAstBlock,
+            named_blocks: &HashMap<String, Block>,
+            ptr_map: &HashMap<String, Pointer>,
+            val_map: &mut HashMap<String, Value>,
+        ) {
+            let block = named_blocks.get(&ir_block.label).unwrap();
+            for ins in ir_block.instructions {
+                let opt_metadata = ins
+                    .metadata
+                    .map(|mdi| self.md_map.get(&mdi).unwrap())
+                    .copied();
+                let ins_val = match ins.op {
+                    IrAstOperation::AddrOf(val) => block
+                        .ins(context)
+                        .addr_of(*val_map.get(&val).unwrap())
+                        .add_metadatum(context, opt_metadata),
+                    IrAstOperation::Asm(args, return_type, return_name, ops, meta_idx) => {
+                        let args = args
+                            .into_iter()
+                            .map(|(name, opt_init)| AsmArg {
+                                name,
+                                initializer: opt_init.map(|init| match init {
+                                    IrAstAsmArgInit::Var(var) => {
+                                        val_map.get(&var).cloned().unwrap()
+                                    }
+                                    IrAstAsmArgInit::Imm(cv) => {
+                                        cv.value.as_value(context, IrAstTy::U64).add_metadatum(
+                                            context,
+                                            self.md_map.get(cv.meta_idx.as_ref().unwrap()).copied(),
+                                        )
+                                    }
+                                }),
+                            })
+                            .collect();
+                        let body = ops
+                            .into_iter()
+                            .map(
+                                |IrAstAsmOp {
+                                     name,
+                                     args,
+                                     imm,
+                                     meta_idx,
+                                 }| AsmInstruction {
+                                    name,
+                                    args,
+                                    immediate: imm,
+                                    metadata: meta_idx
+                                        .as_ref()
+                                        .and_then(|meta_idx| self.md_map.get(meta_idx).copied()),
+                                },
+                            )
+                            .collect();
+                        let md_idx = meta_idx.map(|mdi| self.md_map.get(&mdi).unwrap()).copied();
+                        let return_type = return_type.to_ir_type(context);
+                        block
+                            .ins(context)
+                            .asm_block(args, body, return_type, return_name)
+                            .add_metadatum(context, md_idx)
+                    }
+                    IrAstOperation::BitCast(val, ty) => {
+                        let to_ty = ty.to_ir_type(context);
+                        block
+                            .ins(context)
+                            .bitcast(*val_map.get(&val).unwrap(), to_ty)
+                            .add_metadatum(context, opt_metadata)
+                    }
+                    IrAstOperation::Br(to_block_name) => {
+                        let to_block = named_blocks.get(&to_block_name).unwrap();
+                        block
+                            .ins(context)
+                            .branch(*to_block, None)
+                            .add_metadatum(context, opt_metadata)
+                    }
+                    IrAstOperation::Call(callee, args) => {
+                        // We can't resolve calls to other functions until we've done a first pass and
+                        // created them first.  So we can insert a dummy call here, save the call
+                        // params and update it with the proper callee function in a second pass.
+                        //
+                        // The dummy function we'll use for now is just the current function.
+                        let dummy_func = block.get_function(context);
+                        let call_val = block
+                            .ins(context)
+                            .call(
+                                dummy_func,
+                                &args
+                                    .iter()
+                                    .map(|arg_name| val_map.get(arg_name).unwrap())
+                                    .cloned()
+                                    .collect::<Vec<Value>>(),
+                            )
+                            .add_metadatum(context, opt_metadata);
+                        self.unresolved_calls.push(PendingCall { call_val, callee });
+                        call_val
+                    }
+                    IrAstOperation::Cbr(cond_val_name, true_block_name, false_block_name) => block
+                        .ins(context)
+                        .conditional_branch(
+                            *val_map.get(&cond_val_name).unwrap(),
+                            *named_blocks.get(&true_block_name).unwrap(),
+                            *named_blocks.get(&false_block_name).unwrap(),
+                            None,
+                        )
+                        .add_metadatum(context, opt_metadata),
+                    IrAstOperation::Cmp(pred_str, lhs, rhs) => block
+                        .ins(context)
+                        .cmp(
+                            match pred_str.as_str() {
+                                "eq" => Predicate::Equal,
+                                _ => unreachable!("Bug in `cmp` predicate rule."),
+                            },
+                            *val_map.get(&lhs).unwrap(),
+                            *val_map.get(&rhs).unwrap(),
+                        )
+                        .add_metadatum(context, opt_metadata),
+                    IrAstOperation::Const(ty, val) => val
+                        .value
+                        .as_value(context, ty)
+                        .add_metadatum(context, opt_metadata),
+                    IrAstOperation::ContractCall(
+                        return_type,
+                        name,
+                        params,
+                        coins,
+                        asset_id,
+                        gas,
+                    ) => {
+                        let ir_ty = return_type.to_ir_type(context);
+                        block
+                            .ins(context)
+                            .contract_call(
+                                ir_ty,
+                                name,
+                                *val_map.get(&params).unwrap(),
+                                *val_map.get(&coins).unwrap(),
+                                *val_map.get(&asset_id).unwrap(),
+                                *val_map.get(&gas).unwrap(),
+                            )
+                            .add_metadatum(context, opt_metadata)
+                    }
+                    IrAstOperation::ExtractElement(aval, ty, idx) => {
+                        let ir_ty = ty.to_ir_aggregate_type(context);
+                        block
+                            .ins(context)
+                            .extract_element(
+                                *val_map.get(&aval).unwrap(),
+                                ir_ty,
+                                *val_map.get(&idx).unwrap(),
+                            )
+                            .add_metadatum(context, opt_metadata)
+                    }
+                    IrAstOperation::ExtractValue(val, ty, idcs) => {
+                        let ir_ty = ty.to_ir_aggregate_type(context);
+                        block
+                            .ins(context)
+                            .extract_value(*val_map.get(&val).unwrap(), ir_ty, idcs)
+                            .add_metadatum(context, opt_metadata)
+                    }
+                    IrAstOperation::GetStorageKey() => block
+                        .ins(context)
+                        .get_storage_key()
+                        .add_metadatum(context, opt_metadata),
+                    IrAstOperation::GetPtr(base_ptr, ptr_ty, offset) => {
+                        let ptr_ir_ty = ptr_ty.to_ir_type(context);
+                        block
+                            .ins(context)
+                            .get_ptr(*ptr_map.get(&base_ptr).unwrap(), ptr_ir_ty, offset)
+                            .add_metadatum(context, opt_metadata)
+                    }
+                    IrAstOperation::Gtf(index, tx_field_id) => block
+                        .ins(context)
+                        .gtf(*val_map.get(&index).unwrap(), tx_field_id)
+                        .add_metadatum(context, opt_metadata),
+                    IrAstOperation::InsertElement(aval, ty, val, idx) => {
+                        let ir_ty = ty.to_ir_aggregate_type(context);
+                        block
+                            .ins(context)
+                            .insert_element(
+                                *val_map.get(&aval).unwrap(),
+                                ir_ty,
+                                *val_map.get(&val).unwrap(),
+                                *val_map.get(&idx).unwrap(),
+                            )
+                            .add_metadatum(context, opt_metadata)
+                    }
+                    IrAstOperation::InsertValue(aval, ty, ival, idcs) => {
+                        let ir_ty = ty.to_ir_aggregate_type(context);
+                        block
+                            .ins(context)
+                            .insert_value(
+                                *val_map.get(&aval).unwrap(),
+                                ir_ty,
+                                *val_map.get(&ival).unwrap(),
+                                idcs,
+                            )
+                            .add_metadatum(context, opt_metadata)
+                    }
+                    IrAstOperation::IntToPtr(val, ty) => {
+                        let to_ty = ty.to_ir_type(context);
+                        block
+                            .ins(context)
+                            .int_to_ptr(*val_map.get(&val).unwrap(), to_ty)
+                            .add_metadatum(context, opt_metadata)
+                    }
+                    IrAstOperation::Load(src_name) => block
+                        .ins(context)
+                        .load(*val_map.get(&src_name).unwrap())
+                        .add_metadatum(context, opt_metadata),
+                    IrAstOperation::Nop => block.ins(context).nop(),
+                    IrAstOperation::Phi(pairs) => {
+                        for (block_name, val_name) in pairs {
+                            block.add_phi(
+                                context,
+                                *named_blocks.get(&block_name).unwrap(),
+                                *val_map.get(&val_name).unwrap(),
+                            );
+                        }
+                        block.get_phi(context)
+                    }
+                    IrAstOperation::ReadRegister(reg_name) => block
+                        .ins(context)
+                        .read_register(match reg_name.as_str() {
+                            "of" => Register::Of,
+                            "pc" => Register::Pc,
+                            "ssp" => Register::Ssp,
+                            "sp" => Register::Sp,
+                            "fp" => Register::Fp,
+                            "hp" => Register::Hp,
+                            "err" => Register::Error,
+                            "ggas" => Register::Ggas,
+                            "cgas" => Register::Cgas,
+                            "bal" => Register::Bal,
+                            "is" => Register::Is,
+                            "ret" => Register::Ret,
+                            "retl" => Register::Retl,
+                            "flag" => Register::Flag,
+                            _ => unreachable!("Guaranteed by grammar."),
+                        })
+                        .add_metadatum(context, opt_metadata),
+                    IrAstOperation::Ret(ty, ret_val_name) => {
+                        let ty = ty.to_ir_type(context);
+                        block
+                            .ins(context)
+                            .ret(*val_map.get(&ret_val_name).unwrap(), ty)
+                            .add_metadatum(context, opt_metadata)
+                    }
+                    IrAstOperation::StateLoadQuadWord(dst, key) => block
+                        .ins(context)
+                        .state_load_quad_word(
+                            *val_map.get(&dst).unwrap(),
+                            *val_map.get(&key).unwrap(),
+                        )
+                        .add_metadatum(context, opt_metadata),
+                    IrAstOperation::StateLoadWord(key) => block
+                        .ins(context)
+                        .state_load_word(*val_map.get(&key).unwrap())
+                        .add_metadatum(context, opt_metadata),
+                    IrAstOperation::StateStoreQuadWord(src, key) => block
+                        .ins(context)
+                        .state_store_quad_word(
+                            *val_map.get(&src).unwrap(),
+                            *val_map.get(&key).unwrap(),
+                        )
+                        .add_metadatum(context, opt_metadata),
+                    IrAstOperation::StateStoreWord(src, key) => block
+                        .ins(context)
+                        .state_store_word(*val_map.get(&src).unwrap(), *val_map.get(&key).unwrap())
+                        .add_metadatum(context, opt_metadata),
+                    IrAstOperation::Store(stored_val_name, dst_val_name) => block
+                        .ins(context)
+                        .store(
+                            *val_map.get(&dst_val_name).unwrap(),
+                            *val_map.get(&stored_val_name).unwrap(),
+                        )
+                        .add_metadatum(context, opt_metadata),
+                };
+                ins.value_name.map(|vn| val_map.insert(vn, ins_val));
             }
         }
-        md_map
+
+        fn resolve_calls(self, context: &mut Context) -> Result<(), IrError> {
+            // All of the call instructions are currently invalid (recursive) CALLs to their own
+            // function, which need to be replaced with the proper callee function.  We couldn't do
+            // it above until we'd gone and created all the functions first.
+            //
+            // Now we can loop and find the callee function for each call and update them.
+            for pending_call in self.unresolved_calls {
+                let call_func = context
+                    .functions
+                    .iter()
+                    .find_map(|(idx, content)| {
+                        if content.name == pending_call.callee {
+                            Some(Function(idx))
+                        } else {
+                            None
+                        }
+                    })
+                    .unwrap();
+
+                if let Some(Instruction::Call(dummy_func, _args)) =
+                    pending_call.call_val.get_instruction_mut(context)
+                {
+                    *dummy_func = call_func;
+                }
+            }
+            Ok(())
+        }
     }
 
-    #[allow(clippy::type_complexity)]
-    fn resolve_calls(
+    /// Create the metadata for the module in `context` and generate a map from the parsed
+    /// `MdIdxRef`s to the new actual metadata.
+    fn build_metadata_map(
         context: &mut Context,
-        unresolved_calls: Vec<(Block, Value, String, Vec<Value>, Option<MetadataIndex>)>,
-    ) -> Result<(), IrError> {
-        // All of the call instructions are currently NOPs which need to be replaced with actual
-        // calls.  We couldn't do it above until we'd gone and created all the functions first.
-        //
-        // Now we can loop and find the callee function for each call and replace the NOPs.
-        for (block, nop, callee, args, opt_ins_md_idx) in unresolved_calls {
-            let function = context
-                .functions
-                .iter()
-                .find_map(|(idx, content)| {
-                    if content.name == callee {
-                        Some(Function(idx))
-                    } else {
-                        None
-                    }
-                })
-                .unwrap();
-            let call_val =
-                Value::new_instruction(context, Instruction::Call(function, args), opt_ins_md_idx);
-            block.replace_instruction(context, nop, call_val)?;
+        ir_metadata: Vec<(MdIdxRef, IrMetadatum)>,
+    ) -> HashMap<MdIdxRef, MetadataIndex> {
+        fn convert_md(
+            context: &mut Context,
+            md: IrMetadatum,
+            md_map: &mut HashMap<MdIdxRef, MetadataIndex>,
+        ) -> Metadatum {
+            match md {
+                IrMetadatum::Integer(i) => Metadatum::Integer(i),
+                IrMetadatum::Index(idx) => Metadatum::Index(
+                    md_map
+                        .get(&idx)
+                        .copied()
+                        .expect("Metadatum index not found in map."),
+                ),
+                IrMetadatum::String(s) => Metadatum::String(s),
+                IrMetadatum::Struct(tag, els) => Metadatum::Struct(
+                    tag,
+                    els.into_iter()
+                        .map(|el_md| convert_md(context, el_md, md_map))
+                        .collect(),
+                ),
+                IrMetadatum::List(idcs) => Metadatum::List(
+                    idcs.into_iter()
+                        .map(|idx| {
+                            md_map
+                                .get(&idx)
+                                .copied()
+                                .expect("Metadatum index not found in map.")
+                        })
+                        .collect(),
+                ),
+            }
         }
-        Ok(())
+
+        let mut md_map = HashMap::new();
+
+        for (ir_idx, ir_md) in ir_metadata {
+            let md = convert_md(context, ir_md, &mut md_map);
+            let md_idx = MetadataIndex(context.metadata.insert(md));
+            md_map.insert(ir_idx, md_idx);
+        }
+        md_map
     }
 
     fn string_to_hex<const N: usize>(s: &str) -> [u8; N] {

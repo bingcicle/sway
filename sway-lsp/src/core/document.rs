@@ -1,10 +1,5 @@
-use super::token::Token;
-use super::token_type::TokenType;
-use crate::{capabilities, core::token::traverse_node};
+#![allow(dead_code)]
 use ropey::Rope;
-use std::collections::HashMap;
-use std::sync::Arc;
-use sway_core::{parse, TreeType};
 use tower_lsp::lsp_types::{Diagnostic, Position, Range, TextDocumentContentChangeEvent};
 
 #[derive(Debug)]
@@ -15,9 +10,6 @@ pub struct TextDocument {
     version: i32,
     uri: String,
     content: Rope,
-    tokens: Vec<Token>,
-    lines: HashMap<u32, Vec<usize>>,
-    values: HashMap<String, Vec<usize>>,
 }
 
 impl TextDocument {
@@ -28,69 +20,13 @@ impl TextDocument {
                 version: 1,
                 uri: path.into(),
                 content: Rope::from_str(&content),
-                tokens: vec![],
-                lines: HashMap::new(),
-                values: HashMap::new(),
             }),
             Err(_) => Err(DocumentError::DocumentNotFound),
         }
     }
 
-    pub fn get_token_at_position(&self, position: Position) -> Option<&Token> {
-        let line = position.line;
-
-        if let Some(indices) = self.lines.get(&line) {
-            for index in indices {
-                let token = &self.tokens[*index];
-                if token.is_within_character_range(position.character) {
-                    return Some(token);
-                }
-            }
-        }
-
-        None
-    }
-
-    pub fn get_all_tokens_by_single_name(&self, name: &str) -> Option<Vec<&Token>> {
-        if let Some(indices) = self.values.get(name) {
-            let tokens = indices.iter().map(|index| &self.tokens[*index]).collect();
-            Some(tokens)
-        } else {
-            None
-        }
-    }
-
-    pub fn get_declared_token(&self, name: &str) -> Option<&Token> {
-        if let Some(indices) = self.values.get(name) {
-            for index in indices {
-                let token = &self.tokens[*index];
-                if token.is_initial_declaration() {
-                    return Some(token);
-                }
-            }
-        }
-        None
-    }
-
-    pub fn get_tokens(&self) -> &Vec<Token> {
-        &self.tokens
-    }
-
     pub fn get_uri(&self) -> &str {
         &self.uri
-    }
-
-    pub fn parse(&mut self) -> Result<Vec<Diagnostic>, DocumentError> {
-        self.clear_tokens();
-        self.clear_hash_maps();
-
-        match self.parse_tokens_from_text() {
-            Ok((tokens, diagnostics)) => {
-                self.store_tokens(tokens);
-                Ok(diagnostics)
-            }
-            Err(diagnostics) => Err(DocumentError::FailedToParse(diagnostics)),
-        }
     }
 
     pub fn apply_change(&mut self, change: &TextDocumentContentChangeEvent) {
@@ -107,79 +43,6 @@ impl TextDocument {
 
 // private methods
 impl TextDocument {
-    fn parse_tokens_from_text(&self) -> Result<(Vec<Token>, Vec<Diagnostic>), Vec<Diagnostic>> {
-        let text = Arc::from(self.get_text());
-        let parsed_result = parse(text, None);
-        match parsed_result.value {
-            None => Err(capabilities::diagnostic::get_diagnostics(
-                parsed_result.warnings,
-                parsed_result.errors,
-            )),
-            Some(value) => {
-                let mut tokens = vec![];
-
-                if let TreeType::Library { name } = value.tree_type {
-                    // TODO
-                    // Is library name necessary to store for the LSP?
-                    let token = Token::from_ident(&name, TokenType::Library);
-                    tokens.push(token);
-                };
-                for node in value.tree.root_nodes {
-                    traverse_node(node, &mut tokens);
-                }
-
-                Ok((
-                    tokens,
-                    capabilities::diagnostic::get_diagnostics(
-                        parsed_result.warnings,
-                        parsed_result.errors,
-                    ),
-                ))
-            }
-        }
-    }
-
-    fn store_tokens(&mut self, tokens: Vec<Token>) {
-        self.tokens = Vec::with_capacity(tokens.len());
-
-        for (index, token) in tokens.into_iter().enumerate() {
-            let line = token.get_line_start();
-            let token_name = token.name.clone();
-
-            // insert to tokens
-            self.tokens.push(token);
-
-            // insert index into hashmap for lines
-            match self.lines.get_mut(&line) {
-                Some(v) => {
-                    v.push(index);
-                }
-                None => {
-                    self.lines.insert(line, vec![index]);
-                }
-            }
-
-            // insert index into hashmap for names
-            match self.values.get_mut(&token_name) {
-                Some(v) => {
-                    v.push(index);
-                }
-                None => {
-                    self.values.insert(token_name, vec![index]);
-                }
-            }
-        }
-    }
-
-    fn clear_hash_maps(&mut self) {
-        self.lines = HashMap::new();
-        self.values = HashMap::new();
-    }
-
-    fn clear_tokens(&mut self) {
-        self.tokens = vec![];
-    }
-
     fn build_edit<'change>(
         &self,
         change: &'change TextDocumentContentChangeEvent,

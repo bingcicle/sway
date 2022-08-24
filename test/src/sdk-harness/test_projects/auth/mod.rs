@@ -1,7 +1,4 @@
-use fuel_tx::ContractId;
-use fuels::prelude::*;
-use fuels::signers::wallet::Wallet;
-use fuels_abigen_macro::abigen;
+use fuels::{prelude::*, tx::ContractId};
 
 abigen!(
     AuthContract,
@@ -24,7 +21,7 @@ async fn is_external_from_sdk() {
 async fn msg_sender_from_sdk() {
     let (auth_instance, _, _, _, wallet) = get_contracts().await;
     let result = auth_instance
-        .returns_msg_sender_address(wallet.address())
+        .returns_msg_sender_address(wallet.address().into())
         .call()
         .await
         .unwrap();
@@ -38,7 +35,7 @@ async fn msg_sender_from_contract() {
 
     let result = caller_instance
         .call_auth_contract(auth_id, caller_id)
-        .set_contracts(&[auth_id])
+        .set_contracts(&[auth_id.into()])
         .call()
         .await
         .unwrap();
@@ -51,27 +48,37 @@ async fn get_contracts() -> (
     ContractId,
     AuthCallerContract,
     ContractId,
-    Wallet,
+    LocalWallet,
 ) {
-    let (provider, wallet) = setup_test_provider_and_wallet().await;
-    let compiled_1 = Contract::load_sway_contract(
+    let wallet = launch_provider_and_get_wallet().await;
+
+    let id_1 = Contract::deploy(
         "test_artifacts/auth_testing_contract/out/debug/auth_testing_contract.bin",
+        &wallet,
+        TxParameters::default(),
+        StorageConfiguration::with_storage_path(
+            Some(
+                "test_artifacts/auth_testing_contract/out/debug/auth_testing_contract-storage_slots.json".to_string(),
+                )
+        )
     )
+    .await
     .unwrap();
-    let compiled_2 = Contract::load_sway_contract(
+
+    let id_2 = Contract::deploy(
         "test_artifacts/auth_caller_contract/out/debug/auth_caller_contract.bin",
+        &wallet,
+        TxParameters::default(),
+        StorageConfiguration::with_storage_path(Some(
+            "test_artifacts/auth_caller_contract/out/debug/auth_caller_contract-storage_slots.json"
+                .to_string(),
+        )),
     )
+    .await
     .unwrap();
 
-    let id_1 = Contract::deploy(&compiled_1, &provider, &wallet, TxParameters::default())
-        .await
-        .unwrap();
-    let id_2 = Contract::deploy(&compiled_2, &provider, &wallet, TxParameters::default())
-        .await
-        .unwrap();
+    let instance_1 = AuthContractBuilder::new(id_1.to_string(), wallet.clone()).build();
+    let instance_2 = AuthCallerContractBuilder::new(id_2.to_string(), wallet.clone()).build();
 
-    let instance_1 = AuthContract::new(id_1.to_string(), provider.clone(), wallet.clone());
-    let instance_2 = AuthCallerContract::new(id_2.to_string(), provider.clone(), wallet.clone());
-
-    (instance_1, id_1, instance_2, id_2, wallet)
+    (instance_1, id_1.into(), instance_2, id_2.into(), wallet)
 }

@@ -1,7 +1,13 @@
 # Wallet Smart Contract
 
-_Contract storage in the language syntax is a work-in-progress feature, and the following example does not currently compile._
+## ABI Declaration
 
 ```sway
-{{#include ../../../examples/wallet_smart_contract/src/main.sw}}
+{{#include ../../../examples/wallet_abi/src/main.sw:abi_library}}
+```
+
+## ABI Implementation
+
+```sway
+{{#include ../../../examples/wallet_smart_contract/src/main.sw:full_wallet}}
 ```

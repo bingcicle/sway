@@ -1,9 +1,9 @@
-use fuel_tx::{Bytes32, ContractId};
 use fuel_types::bytes::WORD_SIZE;
-use fuel_vm::consts::VM_TX_MEMORY;
+use fuel_vm::fuel_tx::ConsensusParameters;
 use fuels::prelude::*;
 use fuels::signers::wallet::Wallet;
-use fuels_abigen_macro::abigen;
+use fuels::tx::{Bytes32, ContractId};
+use std::str::FromStr;
 
 abigen!(
     TxContractTest,
@@ -11,17 +11,21 @@ abigen!(
 );
 
 async fn get_contracts() -> (TxContractTest, ContractId, Wallet) {
-    let (provider, wallet) = setup_test_provider_and_wallet().await;
-    let compiled =
-        Contract::load_sway_contract("test_artifacts/tx_contract/out/debug/tx_contract.bin")
-            .unwrap();
+    let wallet = launch_provider_and_get_wallet().await;
 
-    let contract_id = Contract::deploy(&compiled, &provider, &wallet, TxParameters::default())
-        .await
-        .unwrap();
-    let instance = TxContractTest::new(contract_id.to_string(), provider.clone(), wallet.clone());
+    let contract_id = Contract::deploy(
+        "test_artifacts/tx_contract/out/debug/tx_contract.bin",
+        &wallet,
+        TxParameters::default(),
+        StorageConfiguration::with_storage_path(Some(
+            "test_artifacts/tx_contract/out/debug/tx_contract-storage_slots.json".to_string(),
+        )),
+    )
+    .await
+    .unwrap();
+    let instance = TxContractTestBuilder::new(contract_id.to_string(), wallet.clone()).build();
 
-    (instance, contract_id, wallet)
+    (instance, contract_id.into(), wallet)
 }
 
 #[tokio::test]
@@ -91,7 +95,7 @@ async fn can_get_maturity() {
 async fn can_get_script_length() {
     let (contract_instance, _, _) = get_contracts().await;
     // TODO use programmatic script length https://github.com/FuelLabs/fuels-rs/issues/181
-    let script_length = 24;
+    let script_length = 32;
 
     let result = contract_instance
         .get_tx_script_length()
@@ -105,7 +109,7 @@ async fn can_get_script_length() {
 async fn can_get_script_data_length() {
     let (contract_instance, _, _) = get_contracts().await;
     // TODO make this programmatic.
-    let script_data_length = 80;
+    let script_data_length = 88;
 
     let result = contract_instance
         .get_tx_script_data_length()
@@ -157,7 +161,9 @@ async fn can_get_witnesses_count() {
 #[tokio::test]
 async fn can_get_receipts_root() {
     let (contract_instance, _, _) = get_contracts().await;
-    let zero_receipts_root = Bytes32::default();
+    let zero_receipts_root =
+        Bytes32::from_str("4be973feb50f1dabb9b2e451229135add52f9c0973c11e556fe5bce4a19df470")
+            .unwrap();
 
     let result = contract_instance
         .get_tx_receipts_root()
@@ -182,10 +188,11 @@ async fn can_get_script_start_offset() {
     + WORD_SIZE // Outputs size
     + WORD_SIZE // Witnesses size
     + Bytes32::LEN; // Receipts root
-    let script_start_offset = VM_TX_MEMORY + TRANSACTION_SCRIPT_FIXED_SIZE;
+    let script_start_offset =
+        ConsensusParameters::DEFAULT.tx_offset() + TRANSACTION_SCRIPT_FIXED_SIZE;
 
     let result = contract_instance
-        .get_tx_script_start_offset()
+        .get_tx_script_start_pointer()
         .call()
         .await
         .unwrap();
@@ -203,8 +210,9 @@ async fn can_get_tx_input_type() {
         .call()
         .await
         .unwrap();
+
     let result = contract_instance
-        .get_tx_input_type(result_ptr.value)
+        .get_tx_input_type_from_ptr(result_ptr.value)
         .call()
         .await
         .unwrap();
@@ -218,29 +226,25 @@ async fn can_get_tx_input_type() {
         .await
         .unwrap();
     let result = contract_instance
-        .get_tx_input_type(result_ptr.value)
+        .get_tx_input_type_from_ptr(result_ptr.value)
         .call()
         .await
         .unwrap();
     assert_eq!(result.value, input_type);
 }
 
+// TODO: Add tests for getting InputMessage owner, type when InputMessages land.
 #[tokio::test]
 async fn can_get_tx_input_coin_owner() {
     let (contract_instance, _, wallet) = get_contracts().await;
 
-    // Coin input
-    let result_ptr = contract_instance
-        .get_tx_input_pointer(1)
+    let owner_result = contract_instance
+        .get_tx_input_coin_owner(1)
         .call()
         .await
         .unwrap();
-    let result = contract_instance
-        .get_tx_input_coin_owner(result_ptr.value)
-        .call()
-        .await
-        .unwrap();
-    assert_eq!(result.value, wallet.address());
+
+    assert_eq!(owner_result.value, wallet.address().into());
 }
 
 #[tokio::test]
@@ -250,7 +254,7 @@ async fn can_get_tx_output_type() {
     // Contract output
     let output_type = 1;
     let result_ptr = contract_instance
-        .get_tx_output_pointer(1)
+        .get_tx_output_pointer(0)
         .call()
         .await
         .unwrap();
@@ -264,7 +268,7 @@ async fn can_get_tx_output_type() {
     // Change output
     let output_type = 3;
     let result_ptr = contract_instance
-        .get_tx_output_pointer(0)
+        .get_tx_output_pointer(1)
         .call()
         .await
         .unwrap();
@@ -274,4 +278,19 @@ async fn can_get_tx_output_type() {
         .await
         .unwrap();
     assert_eq!(result.value, output_type);
+}
+
+#[tokio::test]
+async fn can_get_tx_id() {
+    let (contract_instance, _, _) = get_contracts().await;
+
+    let call_handler = contract_instance.get_tx_id();
+    let script = call_handler.get_script().await;
+    let tx_id = script.tx.id();
+
+    let result = contract_instance.get_tx_id().call().await.unwrap();
+
+    let byte_array: [u8; 32] = tx_id.into();
+
+    assert_eq!(result.value, byte_array);
 }

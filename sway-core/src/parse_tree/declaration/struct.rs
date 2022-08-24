@@ -1,6 +1,6 @@
 use crate::{
-    parse_tree::{declaration::TypeParameter, Visibility},
-    type_engine::TypeInfo,
+    parse_tree::Visibility,
+    type_system::{TypeInfo, TypeParameter},
 };
 
 use sway_types::{ident::Ident, span::Span};
@@ -17,7 +17,7 @@ pub struct StructDeclaration {
 #[derive(Debug, Clone)]
 pub struct StructField {
     pub name: Ident,
-    pub(crate) r#type: TypeInfo,
+    pub type_info: TypeInfo,
     pub(crate) span: Span,
-    pub(crate) type_span: Span,
+    pub type_span: Span,
 }

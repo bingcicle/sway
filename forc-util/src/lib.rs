@@ -5,13 +5,16 @@ use annotate_snippets::{
     snippet::{Annotation, AnnotationType, Slice, Snippet, SourceAnnotation},
 };
 use anyhow::{bail, Result};
+use std::env;
 use std::ffi::OsStr;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::str;
 use sway_core::{error::LineCol, CompileError, CompileWarning, TreeType};
+use sway_types::Spanned;
 use sway_utils::constants;
 use termcolor::{self, Color as TermColor, ColorChoice, ColorSpec, StandardStream, WriteColor};
+use tracing_subscriber::filter::EnvFilter;
 
 pub mod restricted;
 
@@ -40,7 +43,7 @@ pub fn find_manifest_dir(starter_path: &Path) -> Option<PathBuf> {
 }
 /// Continually go up in the file tree until a Cargo manifest file is found.
 pub fn find_cargo_manifest_dir(starter_path: &Path) -> Option<PathBuf> {
-    find_parent_dir_with_file(starter_path, "Cargo.toml")
+    find_parent_dir_with_file(starter_path, constants::TEST_MANIFEST_FILE_NAME)
 }
 
 pub fn is_sway_file(file: &Path) -> bool {
@@ -145,9 +148,9 @@ pub fn print_on_success(
     }
 
     if warnings.is_empty() {
-        let _ = println_green_err(&format!("  Compiled {} {:?}.", type_str, proj_name));
+        println_green_err(&format!("  Compiled {} {:?}.", type_str, proj_name));
     } else {
-        let _ = println_yellow_err(&format!(
+        println_yellow_err(&format!(
             "  Compiled {} {:?} with {} {}.",
             type_str,
             proj_name,
@@ -167,9 +170,9 @@ pub fn print_on_success_library(silent_mode: bool, proj_name: &str, warnings: &[
     }
 
     if warnings.is_empty() {
-        let _ = println_green_err(&format!("  Compiled library {:?}.", proj_name));
+        println_green_err(&format!("  Compiled library {:?}.", proj_name));
     } else {
-        let _ = println_yellow_err(&format!(
+        println_yellow_err(&format!(
             "  Compiled library {:?} with {} {}.",
             proj_name,
             warnings.len(),
@@ -310,7 +313,7 @@ fn format_err(err: &sway_core::CompileError) {
             ..Default::default()
         },
     };
-    eprintln!("{}\n____\n", DisplayList::from(snippet))
+    tracing::error!("{}\n____\n", DisplayList::from(snippet))
 }
 
 fn format_warning(err: &sway_core::CompileWarning) {
@@ -352,7 +355,7 @@ fn format_warning(err: &sway_core::CompileWarning) {
             ..Default::default()
         },
     };
-    eprintln!("{}\n____\n", DisplayList::from(snippet))
+    tracing::warn!("{}\n____\n", DisplayList::from(snippet))
 }
 
 /// Given a start and an end position and an input, determine how much of a window to show in the
@@ -380,31 +383,63 @@ fn construct_window<'a>(
     let mut lines_to_start_of_snippet = 0;
     let mut calculated_start_ix = None;
     let mut calculated_end_ix = None;
-    for (ix, character) in input.chars().enumerate() {
+    let mut pos = 0;
+    for character in input.chars() {
         if character == '\n' {
             current_line += 1
         }
 
         if current_line + NUM_LINES_BUFFER >= start.line && calculated_start_ix.is_none() {
-            calculated_start_ix = Some(ix);
+            calculated_start_ix = Some(pos);
             lines_to_start_of_snippet = current_line;
         }
 
         if current_line >= end.line + NUM_LINES_BUFFER && calculated_end_ix.is_none() {
-            calculated_end_ix = Some(ix);
+            calculated_end_ix = Some(pos);
         }
 
         if calculated_start_ix.is_some() && calculated_end_ix.is_some() {
             break;
         }
+        pos += character.len_utf8();
     }
     let calculated_start_ix = calculated_start_ix.unwrap_or(0);
     let calculated_end_ix = calculated_end_ix.unwrap_or(input.len());
 
-    *start_ix -= std::cmp::min(calculated_start_ix, *start_ix);
-    *end_ix -= std::cmp::min(calculated_start_ix, *end_ix);
+    let start_ix_bytes = *start_ix - std::cmp::min(calculated_start_ix, *start_ix);
+    let end_ix_bytes = *end_ix - std::cmp::min(calculated_start_ix, *end_ix);
+    // We want the start_ix and end_ix in terms of chars and not bytes, so translate.
+    *start_ix = input[calculated_start_ix..(calculated_start_ix + start_ix_bytes)]
+        .chars()
+        .count();
+    *end_ix = input[calculated_start_ix..(calculated_start_ix + end_ix_bytes)]
+        .chars()
+        .count();
+
     start.line = lines_to_start_of_snippet;
     &input[calculated_start_ix..calculated_end_ix]
+}
+
+const LOG_FILTER: &str = "RUST_LOG";
+
+/// A subscriber built from default `tracing_subscriber::fmt::SubscriberBuilder` such that it would match directly using `println!` throughout the repo.
+///
+/// `RUST_LOG` environment variable can be used to set different minimum level for the subscriber, default is `INFO`.
+pub fn init_tracing_subscriber() {
+    let filter = match env::var_os(LOG_FILTER) {
+        Some(_) => EnvFilter::try_from_default_env().expect("Invalid `RUST_LOG` provided"),
+        None => EnvFilter::new("info"),
+    };
+
+    tracing_subscriber::fmt::Subscriber::builder()
+        .with_env_filter(filter)
+        .with_ansi(true)
+        .with_level(false)
+        .with_file(false)
+        .with_line_number(false)
+        .without_time()
+        .with_target(false)
+        .init();
 }
 
 #[cfg(all(feature = "uwu", any(target_arch = "x86", target_arch = "x86_64")))]

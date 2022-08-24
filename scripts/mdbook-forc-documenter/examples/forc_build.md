@@ -1,5 +1,6 @@
+<!-- markdownlint-disable MD041 -->
 
-## EXAMPLE:
+## EXAMPLE
 
 Compile the sway files of the current project.
 

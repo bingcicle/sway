@@ -1,4 +1,9 @@
-use crate::priv_prelude::*;
+use crate::keywords::RESERVED_KEYWORDS;
+use crate::{ParseErrorKind, ParseResult, Parser, ParserConsumed, Peeker};
+
+use sway_ast::token::Delimiter;
+use sway_ast::Intrinsic;
+use sway_types::{Ident, Spanned};
 
 pub trait Parse {
     fn parse(parser: &mut Parser) -> ParseResult<Self>
@@ -42,6 +47,23 @@ macro_rules! impl_tuple (
                     let $name = parser.parse()?;
                 )*
                 Ok(($($name,)*))
+            }
+        }
+
+        impl<$($name,)*> Peek for ($($name,)*)
+        where
+            $($name: Peek,)*
+        {
+            fn peek(peeker: Peeker<'_>) -> Option<Self> {
+                #![allow(unused_assignments, unused, non_snake_case)]
+
+                let mut tokens = peeker.token_trees;
+                $(
+                    let ($name, fewer_tokens) = Peeker::with::<$name>(tokens)?;
+                    tokens = fewer_tokens;
+
+                )*
+                Some(($($name,)*))
             }
         }
     };
@@ -93,7 +115,14 @@ impl Parse for Ident {
                 if ident_str.starts_with("__") && Intrinsic::try_from_str(ident_str).is_none() {
                     return Err(parser.emit_error_with_span(
                         ParseErrorKind::InvalidDoubleUnderscore,
-                        ident.span().clone(),
+                        ident.span(),
+                    ));
+                }
+
+                if !ident.is_raw_ident() && RESERVED_KEYWORDS.contains(ident_str) {
+                    return Err(parser.emit_error_with_span(
+                        ParseErrorKind::ReservedKeywordIdentifier,
+                        ident.span(),
                     ));
                 }
 

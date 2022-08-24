@@ -1,11 +1,22 @@
 [[package]]
 name = 'core'
+source = 'path+from-root-E11027628D2FC8AD'
 dependencies = []
 
 [[package]]
 name = 'std'
+source = 'path+from-root-E11027628D2FC8AD'
 dependencies = ['core']
 
 [[package]]
-name = 'wallet_smart_contract'
+name = 'wallet_abi'
+source = 'path+from-root-E11027628D2FC8AD'
 dependencies = ['std']
+
+[[package]]
+name = 'wallet_smart_contract'
+source = 'root'
+dependencies = [
+    'std',
+    'wallet_abi',
+]

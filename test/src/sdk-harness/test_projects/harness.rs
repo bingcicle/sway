@@ -1,17 +1,21 @@
 // Add test modules here:
 
 mod auth;
-mod b256_ops;
 mod call_frames;
 mod context;
-mod contract_id_type;
-mod evm_ecr;
+mod evm;
+mod exponentiation;
 mod hashing;
 mod logging;
-mod option;
+mod methods;
+mod option_field_order;
+mod predicate_data_simple;
+mod predicate_data_struct;
 mod reentrancy;
 mod registers;
-mod require;
-mod result;
+mod script_data;
+mod storage;
+mod storage_map;
+mod storage_vec;
 mod token_ops;
 mod tx_fields;

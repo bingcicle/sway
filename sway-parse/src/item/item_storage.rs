@@ -1,41 +1,19 @@
-use crate::priv_prelude::*;
+use crate::{Parse, ParseResult, Parser};
 
-#[derive(Clone, Debug)]
-pub struct ItemStorage {
-    pub storage_token: StorageToken,
-    pub fields: Braces<Punctuated<StorageField, CommaToken>>,
-}
-
-impl ItemStorage {
-    pub fn span(&self) -> Span {
-        Span::join(self.storage_token.span(), self.fields.span())
-    }
-}
-
-#[derive(Clone, Debug)]
-pub struct StorageField {
-    pub name: Ident,
-    pub colon_token: ColonToken,
-    pub ty: Ty,
-    pub initializer: Option<(EqToken, Expr)>,
-}
+use sway_ast::{ItemStorage, StorageField};
 
 impl Parse for StorageField {
     fn parse(parser: &mut Parser) -> ParseResult<StorageField> {
         let name = parser.parse()?;
         let colon_token = parser.parse()?;
         let ty = parser.parse()?;
-        let initializer = match parser.take() {
-            Some(eq_token) => {
-                let expr = parser.parse()?;
-                Some((eq_token, expr))
-            }
-            None => None,
-        };
+        let eq_token = parser.parse()?;
+        let initializer = parser.parse()?;
         Ok(StorageField {
             name,
             colon_token,
             ty,
+            eq_token,
             initializer,
         })
     }

@@ -1,47 +1,12 @@
-use crate::priv_prelude::*;
+use crate::expr::op_code::parse_instruction;
+use crate::{Parse, ParseErrorKind, ParseResult, ParseToEnd, Parser, ParserConsumed};
 
-#[derive(Clone, Debug)]
-pub struct AsmBlock {
-    pub asm_token: AsmToken,
-    pub registers: Parens<Punctuated<AsmRegisterDeclaration, CommaToken>>,
-    pub contents: Braces<AsmBlockContents>,
-}
-
-#[derive(Clone, Debug)]
-pub struct AsmRegisterDeclaration {
-    pub register: Ident,
-    pub value_opt: Option<(ColonToken, Box<Expr>)>,
-}
-
-#[derive(Clone, Debug)]
-pub struct AsmBlockContents {
-    pub instructions: Vec<(Instruction, SemicolonToken)>,
-    pub final_expr_opt: Option<AsmFinalExpr>,
-}
-
-#[derive(Clone, Debug)]
-pub struct AsmFinalExpr {
-    pub register: Ident,
-    pub ty_opt: Option<(ColonToken, Ty)>,
-}
-
-#[derive(Clone, Debug)]
-pub struct AsmImmediate {
-    pub span: Span,
-    pub parsed: BigUint,
-}
-
-impl AsmImmediate {
-    pub fn span(&self) -> Span {
-        self.span.clone()
-    }
-}
-
-impl AsmBlock {
-    pub fn span(&self) -> Span {
-        Span::join(self.asm_token.span(), self.contents.span())
-    }
-}
+use core::str::FromStr;
+use num_bigint::BigUint;
+use sway_ast::expr::asm::{
+    AsmBlock, AsmBlockContents, AsmFinalExpr, AsmImmediate, AsmRegisterDeclaration,
+};
+use sway_types::{Ident, Spanned};
 
 impl Parse for AsmBlock {
     fn parse(parser: &mut Parser) -> ParseResult<AsmBlock> {
@@ -121,16 +86,15 @@ impl ParseToEnd for AsmBlockContents {
 impl Parse for AsmImmediate {
     fn parse(parser: &mut Parser) -> ParseResult<AsmImmediate> {
         let ident = parser.parse::<Ident>()?;
-        let digits = match ident.as_str().strip_prefix('i') {
-            Some(digits) => digits,
-            None => return Err(parser.emit_error(ParseErrorKind::MalformedAsmImmediate)),
-        };
-        let parsed = match BigUint::from_str(digits).ok() {
-            Some(parsed) => parsed,
-            None => return Err(parser.emit_error(ParseErrorKind::MalformedAsmImmediate)),
-        };
+        let digits = ident
+            .as_str()
+            .strip_prefix('i')
+            .ok_or_else(|| parser.emit_error(ParseErrorKind::MalformedAsmImmediate))?;
+        let parsed = BigUint::from_str(digits)
+            .ok()
+            .ok_or_else(|| parser.emit_error(ParseErrorKind::MalformedAsmImmediate))?;
         Ok(AsmImmediate {
-            span: ident.span().clone(),
+            span: ident.span(),
             parsed,
         })
     }
