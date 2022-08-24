@@ -2,7 +2,8 @@ name: CI
 
 on:
   push:
-    master
+    branches:
+      master
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
