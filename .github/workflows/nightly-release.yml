@@ -194,7 +194,6 @@ jobs:
   install-and-upload-forc-binaries:
     name: Install and upload forc binaries to release
     runs-on: ${{ matrix.job.os }}
-    needs: publish
     strategy:
       matrix:
         job:
