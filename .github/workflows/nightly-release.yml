@@ -220,6 +220,7 @@ jobs:
         run: |
           echo "SDKROOT=$(xcrun -sdk macosx --show-sdk-path)" >> $GITHUB_ENV
           echo "MACOSX_DEPLOYMENT_TARGET=$(xcrun -sdk macosx --show-sdk-platform-version)" >> $GITHUB_ENV
+
       - name: Linux ARM setup
         if: ${{ matrix.job.target == 'aarch64-unknown-linux-gnu' }}
         run: |
@@ -233,30 +234,6 @@ jobs:
           command: install
           args: --profile=release --path ./forc
 
-      - name: Install Forc-Fmt
-        uses: actions-rs/cargo@v1
-        with:
-          command: install
-          args: --profile=release --path ./forc-plugins/forc-fmt
-
-      - name: Install Forc-LSP
-        uses: actions-rs/cargo@v1
-        with:
-          command: install
-          args: --profile=release --path ./forc-plugins/forc-lsp
-
-      - name: Install Forc-Explore
-        uses: actions-rs/cargo@v1
-        with:
-          command: install
-          args: --profile=release --path ./forc-plugins/forc-explore
-
-      - name: Install Forc-Client
-        uses: actions-rs/cargo@v1
-        with:
-          command: install
-          args: --profile=release --path ./forc-plugins/forc-client
-
       - name: Set current date
         id: set-date
         run: |
@@ -269,13 +246,22 @@ jobs:
           TARGET: ${{ matrix.job.target }}
           ARCH: ${{ matrix.job.arch }}
         run: |
+          echo $SDKROOT
+          echo $MACOSX_DEPLOYMENT_TARGET
+
           ZIP_FILE_NAME=forc-binaries-nightly-${{ steps.set-date.outputs.date }}-${{ env.PLATFORM_NAME }}_${{ env.ARCH }}.tar.gz
           echo "ZIP_FILE_NAME=$ZIP_FILE_NAME" >> $GITHUB_ENV
           mkdir -pv ./forc-binaries
-          for binary in forc forc-fmt forc-lsp forc-explore forc-deploy forc-run; do
-            cp $(which ${binary}) ./forc-binaries
+            cp $(which forc) ./forc-binaries
           done
           tar -czvf $ZIP_FILE_NAME ./forc-binaries
+
+      - name: Apple M1 trial
+        if: ${{ matrix.job.target == 'aarch64-apple-darwin' }}
+        run: |
+          WHICH=$(which forc)
+          echo "$(file $WHICH)"
+
 
       - name: Archive forc binaries
         uses: actions/upload-release-asset@v1
