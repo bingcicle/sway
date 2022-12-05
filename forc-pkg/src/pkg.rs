@@ -1486,7 +1486,7 @@ fn fetch_deps(
         let dep_node = match fetched.entry(dep_pkg) {
             hash_map::Entry::Occupied(entry) => *entry.get(),
             hash_map::Entry::Vacant(entry) => {
-                let dep_pinned = pin_pkg(fetch_id, path_root, entry.key(), manifest_map, offline)?;
+                let dep_pinned = pin_pkg(path_root, entry.key(), manifest_map, offline)?;
                 let dep_node = graph.add_node(dep_pinned);
                 added.insert(dep_node);
                 *entry.insert(dep_node)
@@ -1647,7 +1647,7 @@ where
 ///
 /// This clones the repository to a temporary directory in order to determine the commit at the
 /// HEAD of the given git reference.
-pub fn pin_git(fetch_id: u64, name: &str, source: SourceGit) -> Result<SourceGitPinned> {
+pub fn pin_git(source: SourceGit) -> Result<SourceGitPinned> {
     let commit_hash = with_tmp_git_repo(&source, |repo| {
         // Resolve the reference to the commit ID.
         let commit_id = source
@@ -1669,7 +1669,6 @@ pub fn pin_git(fetch_id: u64, name: &str, source: SourceGit) -> Result<SourceGit
 /// The `path_root` is required for `Path` dependencies and must specify the package that is the
 /// root of the current subgraph of path dependencies.
 fn pin_pkg(
-    fetch_id: u64,
     path_root: PinnedId,
     pkg: &Pkg,
     manifest_map: &mut ManifestMap,
@@ -1718,7 +1717,7 @@ fn pin_pkg(
                 // If the reference is to a branch or to the default branch we need to fetch
                 // from remote even though we may have it locally. Because remote may contain a
                 // newer commit.
-                let pinned_git = pin_git(fetch_id, &name, git_source.clone())?;
+                let pinned_git = pin_git(git_source.clone())?;
                 let repo_path =
                     git_commit_path(&name, &pinned_git.source.repo, &pinned_git.commit_hash);
                 (pinned_git, repo_path)
@@ -1736,7 +1735,7 @@ fn pin_pkg(
                     _ => {
                         // If the checkout we are looking for does not exists locally or an
                         // error happened during the search fetch it
-                        let pinned_git = pin_git(fetch_id, &name, git_source.clone())?;
+                        let pinned_git = pin_git(git_source.clone())?;
                         let repo_path = git_commit_path(
                             &name,
                             &pinned_git.source.repo,
@@ -1758,7 +1757,7 @@ fn pin_pkg(
                 // using git?
                 if !repo_path.exists() {
                     info!("  Fetching {}", pinned_git.to_string());
-                    fetch_git(fetch_id, &pinned.name, &pinned_git)?;
+                    fetch_git(&pinned.name, &pinned_git)?;
                 }
                 let path = find_dir_within(&repo_path, &pinned.name).ok_or_else(|| {
                     anyhow!(
@@ -1803,7 +1802,7 @@ pub fn git_commit_path(name: &str, repo: &Url, commit_hash: &str) -> PathBuf {
 /// Fetch the repo at the given git package's URL and checkout the pinned commit.
 ///
 /// Returns the location of the checked out commit.
-pub fn fetch_git(fetch_id: u64, name: &str, pinned: &SourceGitPinned) -> Result<PathBuf> {
+pub fn fetch_git(name: &str, pinned: &SourceGitPinned) -> Result<PathBuf> {
     let path = git_commit_path(name, &pinned.source.repo, &pinned.commit_hash);
     // Checkout the pinned hash to the path.
     with_tmp_git_repo(&pinned.source, |repo| {

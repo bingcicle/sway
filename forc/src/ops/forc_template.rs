@@ -1,8 +1,6 @@
 use crate::cli::TemplateCommand;
 use anyhow::{anyhow, Context, Result};
-use forc_pkg::{
-    fetch_git, fetch_id, find_dir_within, git_commit_path, pin_git, PackageManifest, SourceGit,
-};
+use forc_pkg::{fetch_git, find_dir_within, git_commit_path, pin_git, PackageManifest, SourceGit};
 use forc_util::validate_name;
 use fs_extra::dir::{copy, CopyOptions};
 use std::env;
@@ -28,11 +26,8 @@ pub fn init(command: TemplateCommand) -> Result<()> {
 
     let current_dir = &env::current_dir()?;
 
-    let fetch_ts = std::time::Instant::now();
-    let fetch_id = fetch_id(current_dir, fetch_ts);
-
     info!("Resolving the HEAD of {}", source.repo);
-    let git_source = pin_git(fetch_id, &local_repo_name, source)?;
+    let git_source = pin_git(source)?;
 
     let repo_path = git_commit_path(
         &local_repo_name,
@@ -41,7 +36,7 @@ pub fn init(command: TemplateCommand) -> Result<()> {
     );
     if !repo_path.exists() {
         info!("  Fetching {}", git_source.to_string());
-        fetch_git(fetch_id, &local_repo_name, &git_source)?;
+        fetch_git(&local_repo_name, &git_source)?;
     }
 
     let from_path = match command.template_name {
