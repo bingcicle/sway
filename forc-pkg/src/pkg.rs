@@ -1810,7 +1810,9 @@ pub fn fetch_git(name: &str, pinned: &SourceGitPinned) -> Result<PathBuf> {
         let id = git2::Oid::from_str(&pinned.commit_hash)?;
         repo.set_head_detached(id)?;
 
-        let _ = std::fs::remove_dir_all(&path);
+        if path.exists() {
+            let _ = std::fs::remove_dir_all(&path);
+        }
 
         let _ = std::fs::create_dir_all(&path);
         let mut lock = RwLock::new(
