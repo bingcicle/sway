@@ -1614,13 +1614,13 @@ where
 {
     let repo_dir = tmp_git_repo_dir();
 
-    let mut lock = RwLock::new(
+    let lock = RwLock::new(
         fs::OpenOptions::new()
-            .write(true)
+            .read(true)
             .create(true)
             .open(&repo_dir.join(".forc-lock"))?,
     );
-    let _ = lock.write().unwrap();
+    let _ = lock.read().unwrap();
 
     // Initialise the repository.
     let repo = git2::Repository::init(&repo_dir)
@@ -1813,13 +1813,13 @@ pub fn git_commit_path(name: &str, repo: &Url, commit_hash: &str) -> PathBuf {
 pub fn fetch_git(name: &str, pinned: &SourceGitPinned) -> Result<PathBuf> {
     let path = git_commit_path(name, &pinned.source.repo, &pinned.commit_hash);
     // Checkout the pinned hash to the path.
-    let mut lock = RwLock::new(
+    let lock = RwLock::new(
         fs::OpenOptions::new()
-            .write(true)
+            .read(true)
             .create(true)
             .open(&path.join(".forc-lock"))?,
     );
-    let guard = lock.write().unwrap();
+    let guard = lock.read().unwrap();
     with_tmp_git_repo(&pinned.source, |repo| {
         // Change HEAD to point to the pinned commit.
         let id = git2::Oid::from_str(&pinned.commit_hash)?;
