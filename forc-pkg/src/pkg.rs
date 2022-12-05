@@ -1614,6 +1614,14 @@ where
 {
     let repo_dir = tmp_git_repo_dir();
 
+    let mut lock = RwLock::new(
+        fs::OpenOptions::new()
+            .write(true)
+            .create(true)
+            .open(&repo_dir.join(".forc-lock"))?,
+    );
+    let _ = lock.write().unwrap();
+
     // Initialise the repository.
     let repo = git2::Repository::init(&repo_dir)
         .map_err(|e| anyhow!("failed to init repo at \"{}\": {}", repo_dir.display(), e))?;
