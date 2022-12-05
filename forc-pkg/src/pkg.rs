@@ -1614,9 +1614,14 @@ where
 {
     let repo_dir = tmp_git_repo_dir();
 
+    if !repo_dir.exists() {
+        let _ = fs::create_dir_all(&repo_dir);
+    }
+
     let lock = RwLock::new(
         fs::OpenOptions::new()
             .read(true)
+            .write(true)
             .create(true)
             .open(&repo_dir.join(".forc-lock"))?,
     );
@@ -1813,9 +1818,14 @@ pub fn git_commit_path(name: &str, repo: &Url, commit_hash: &str) -> PathBuf {
 pub fn fetch_git(name: &str, pinned: &SourceGitPinned) -> Result<PathBuf> {
     let path = git_commit_path(name, &pinned.source.repo, &pinned.commit_hash);
     // Checkout the pinned hash to the path.
+    if !path.exists() {
+        let _ = fs::create_dir_all(&path);
+    }
+
     let lock = RwLock::new(
         fs::OpenOptions::new()
             .read(true)
+            .write(true)
             .create(true)
             .open(&path.join(".forc-lock"))?,
     );
