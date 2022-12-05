@@ -1613,18 +1613,9 @@ where
     let repo_dir = tmp_git_repo_dir(fetch_id, name, &source.repo);
 
     // Always clear existing temporary directory.
-    let _ = std::fs::remove_dir_all(&repo_dir);
-
-    let _ = std::fs::create_dir_all(&repo_dir);
-
-    let mut lock = RwLock::new(
-        fs::OpenOptions::new()
-            .write(true)
-            .create(true)
-            .open(&repo_dir.join(".forc-lock"))?,
-    );
-    let guard = lock.write().unwrap();
-    println!("{:?}", guard);
+    if repo_dir.exists() {
+        let _ = std::fs::remove_dir_all(&repo_dir);
+    }
 
     // Initialise the repository.
     let repo = git2::Repository::init(&repo_dir)
@@ -1660,6 +1651,7 @@ where
 /// This clones the repository to a temporary directory in order to determine the commit at the
 /// HEAD of the given git reference.
 pub fn pin_git(fetch_id: u64, name: &str, source: SourceGit) -> Result<SourceGitPinned> {
+    println!("pin git");
     let commit_hash = with_tmp_git_repo(fetch_id, name, &source, |repo| {
         // Resolve the reference to the commit ID.
         let commit_id = source
@@ -1833,7 +1825,7 @@ pub fn fetch_git(fetch_id: u64, name: &str, pinned: &SourceGitPinned) -> Result<
                 .open(&path.join(".forc-lock"))?,
         );
         let guard = lock.write().unwrap();
-        println!("{:?}", guard);
+        println!("inner_with_tmp: {:?}", guard);
 
         // Checkout HEAD to the target directory.
         let mut checkout = git2::build::CheckoutBuilder::new();
