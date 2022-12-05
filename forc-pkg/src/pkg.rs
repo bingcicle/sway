@@ -1810,10 +1810,6 @@ pub fn fetch_git(name: &str, pinned: &SourceGitPinned) -> Result<PathBuf> {
         let id = git2::Oid::from_str(&pinned.commit_hash)?;
         repo.set_head_detached(id)?;
 
-        if path.exists() {
-            let _ = std::fs::remove_dir_all(&path);
-        }
-
         let _ = std::fs::create_dir_all(&path);
         let mut lock = RwLock::new(
             fs::OpenOptions::new()
@@ -1822,6 +1818,9 @@ pub fn fetch_git(name: &str, pinned: &SourceGitPinned) -> Result<PathBuf> {
                 .open(&path.join(".forc-lock"))?,
         );
         let guard = lock.write().unwrap();
+
+        let _ = std::fs::remove_dir_all(&path);
+
         println!("inner_with_tmp: {:?}", guard);
 
         // Checkout HEAD to the target directory.
