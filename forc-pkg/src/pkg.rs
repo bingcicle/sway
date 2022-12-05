@@ -1813,21 +1813,17 @@ pub fn git_commit_path(name: &str, repo: &Url, commit_hash: &str) -> PathBuf {
 pub fn fetch_git(name: &str, pinned: &SourceGitPinned) -> Result<PathBuf> {
     let path = git_commit_path(name, &pinned.source.repo, &pinned.commit_hash);
     // Checkout the pinned hash to the path.
+    let mut lock = RwLock::new(
+        fs::OpenOptions::new()
+            .write(true)
+            .create(true)
+            .open(&path.join(".forc-lock"))?,
+    );
+    let guard = lock.write().unwrap();
     with_tmp_git_repo(&pinned.source, |repo| {
         // Change HEAD to point to the pinned commit.
         let id = git2::Oid::from_str(&pinned.commit_hash)?;
         repo.set_head_detached(id)?;
-
-        let _ = std::fs::create_dir_all(&path);
-        let mut lock = RwLock::new(
-            fs::OpenOptions::new()
-                .write(true)
-                .create(true)
-                .open(&path.join(".forc-lock"))?,
-        );
-        let guard = lock.write().unwrap();
-
-        let _ = std::fs::remove_dir_all(&path);
 
         println!("inner_with_tmp: {:?}", guard);
 
