@@ -1559,9 +1559,11 @@ fn hash_url(url: &Url) -> u64 {
 /// A unique `fetch_id` may be specified to avoid contention over the git repo directory in the
 /// case that multiple processes or threads may be building different projects that may require
 /// fetching the same dependency.
-fn tmp_git_repo_dir(fetch_id: u64, name: &str, repo: &Url) -> PathBuf {
-    let repo_dir_name = format!("{:x}-{}", fetch_id, git_repo_dir_name(name, repo));
-    git_checkouts_directory().join("tmp").join(repo_dir_name)
+fn tmp_git_repo_dir() -> PathBuf {
+    tempfile::tempdir()
+        .expect("failed to create tmp dir")
+        .path()
+        .to_path_buf()
 }
 
 /// Given a git reference, build a list of `refspecs` required for the fetch opration.
@@ -1606,16 +1608,11 @@ fn git_ref_to_refspecs(reference: &GitReference) -> (Vec<String>, bool) {
 
 /// Initializes a temporary git repo for the package and fetches only the reference associated with
 /// the given source.
-fn with_tmp_git_repo<F, O>(fetch_id: u64, name: &str, source: &SourceGit, f: F) -> Result<O>
+fn with_tmp_git_repo<F, O>(source: &SourceGit, f: F) -> Result<O>
 where
     F: FnOnce(git2::Repository) -> Result<O>,
 {
-    let repo_dir = tmp_git_repo_dir(fetch_id, name, &source.repo);
-
-    // Always clear existing temporary directory.
-    if repo_dir.exists() {
-        let _ = std::fs::remove_dir_all(&repo_dir);
-    }
+    let repo_dir = tmp_git_repo_dir();
 
     // Initialise the repository.
     let repo = git2::Repository::init(&repo_dir)
@@ -1651,8 +1648,7 @@ where
 /// This clones the repository to a temporary directory in order to determine the commit at the
 /// HEAD of the given git reference.
 pub fn pin_git(fetch_id: u64, name: &str, source: SourceGit) -> Result<SourceGitPinned> {
-    println!("pin git");
-    let commit_hash = with_tmp_git_repo(fetch_id, name, &source, |repo| {
+    let commit_hash = with_tmp_git_repo(&source, |repo| {
         // Resolve the reference to the commit ID.
         let commit_id = source
             .reference
@@ -1810,7 +1806,7 @@ pub fn git_commit_path(name: &str, repo: &Url, commit_hash: &str) -> PathBuf {
 pub fn fetch_git(fetch_id: u64, name: &str, pinned: &SourceGitPinned) -> Result<PathBuf> {
     let path = git_commit_path(name, &pinned.source.repo, &pinned.commit_hash);
     // Checkout the pinned hash to the path.
-    with_tmp_git_repo(fetch_id, name, &pinned.source, |repo| {
+    with_tmp_git_repo(&pinned.source, |repo| {
         // Change HEAD to point to the pinned commit.
         let id = git2::Oid::from_str(&pinned.commit_hash)?;
         repo.set_head_detached(id)?;

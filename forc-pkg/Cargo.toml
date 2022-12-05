@@ -25,6 +25,7 @@ sway-core = { version = "0.31.3", path = "../sway-core" }
 sway-error = { version = "0.31.3", path = "../sway-error" }
 sway-types = { version = "0.31.3", path = "../sway-types" }
 sway-utils = { version = "0.31.3", path = "../sway-utils" }
+tempfile = "3"
 toml = "0.5"
 tracing = "0.1"
 url = { version = "2.2", features = ["serde"] }

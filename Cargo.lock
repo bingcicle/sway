@@ -1804,6 +1804,7 @@ dependencies = [
  "sway-error",
  "sway-types",
  "sway-utils",
+ "tempfile",
  "toml",
  "tracing",
  "url",
