@@ -1623,7 +1623,8 @@ where
             .create(true)
             .open(&repo_dir.join(".forc-lock"))?,
     );
-    let _ = lock.write()?;
+    let guard = lock.write().unwrap();
+    println!("{:?}", guard);
 
     // Initialise the repository.
     let repo = git2::Repository::init(&repo_dir)
@@ -1831,7 +1832,8 @@ pub fn fetch_git(fetch_id: u64, name: &str, pinned: &SourceGitPinned) -> Result<
                 .create(true)
                 .open(&path.join(".forc-lock"))?,
         );
-        let _ = lock.write()?;
+        let guard = lock.write().unwrap();
+        println!("{:?}", guard);
 
         // Checkout HEAD to the target directory.
         let mut checkout = git2::build::CheckoutBuilder::new();
