@@ -7,6 +7,7 @@ use crate::{
     CORE, PRELUDE, STD,
 };
 use anyhow::{anyhow, bail, Context, Error, Result};
+use fd_lock::RwLock;
 use forc_util::{
     default_output_directory, find_file_name, git_checkouts_directory, kebab_to_snake_case,
     print_on_failure, print_on_success,
@@ -1611,6 +1612,25 @@ where
 {
     // Clear existing temporary directory if it exists.
     let repo_dir = tmp_git_repo_dir(fetch_id, name, &source.repo);
+    println!(
+        "with: {}",
+        git_checkouts_directory()
+            .join(repo_dir.file_name().unwrap_or_default())
+            .display()
+    );
+    if !git_checkouts_directory().exists() {
+        let _ = fs::create_dir_all(git_checkouts_directory());
+    }
+    let lock_file = Path::new(".")
+        .join(git_checkouts_directory().join(repo_dir.file_name().unwrap_or_default()));
+    let mut lock = RwLock::new(
+        fs::OpenOptions::new()
+            .write(true)
+            .create(true)
+            .open(lock_file)?,
+    );
+    let _ = lock.write()?;
+
     if repo_dir.exists() {
         let _ = std::fs::remove_dir_all(&repo_dir);
     }
@@ -1811,6 +1831,18 @@ pub fn fetch_git(fetch_id: u64, name: &str, pinned: &SourceGitPinned) -> Result<
         // Change HEAD to point to the pinned commit.
         let id = git2::Oid::from_str(&pinned.commit_hash)?;
         repo.set_head_detached(id)?;
+
+        println!("inner with: {}", path.display());
+
+        let lock_file = Path::new(".")
+            .join(git_checkouts_directory().join(path.file_name().unwrap_or_default()));
+        let mut lock = RwLock::new(
+            fs::OpenOptions::new()
+                .write(true)
+                .create(true)
+                .open(lock_file)?,
+        );
+        let _ = lock.write()?;
         if path.exists() {
             let _ = std::fs::remove_dir_all(&path);
         }
