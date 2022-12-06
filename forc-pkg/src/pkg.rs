@@ -1614,6 +1614,7 @@ where
 {
     let repo_dir = tmp_git_repo_dir();
 
+    let _ = fs::create_dir_all(&repo_dir);
     let _ = RwLock::new(
         fs::OpenOptions::new()
             .read(true)
@@ -1819,6 +1820,7 @@ pub fn fetch_git(name: &str, pinned: &SourceGitPinned) -> Result<PathBuf> {
     let path = git_commit_path(name, &pinned.source.repo, &pinned.commit_hash);
     // Checkout the pinned hash to the path.
 
+    let _ = fs::create_dir_all(&path);
     let _ = RwLock::new(
         fs::OpenOptions::new()
             .read(true)
