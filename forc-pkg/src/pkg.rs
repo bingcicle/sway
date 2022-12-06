@@ -1614,18 +1614,18 @@ where
 {
     let repo_dir = tmp_git_repo_dir();
 
-    if !repo_dir.exists() {
-        let _ = fs::create_dir_all(&repo_dir);
-    }
-
-    let lock = RwLock::new(
+    let _ = RwLock::new(
         fs::OpenOptions::new()
             .read(true)
             .write(true)
             .create(true)
             .open(&repo_dir.join(".forc-lock"))?,
-    );
-    let _ = lock.read().unwrap();
+    )
+    .read()?;
+
+    if repo_dir.exists() {
+        let _ = fs::remove_dir_all(&repo_dir);
+    }
 
     // Initialise the repository.
     let repo = git2::Repository::init(&repo_dir)
@@ -1818,24 +1818,24 @@ pub fn git_commit_path(name: &str, repo: &Url, commit_hash: &str) -> PathBuf {
 pub fn fetch_git(name: &str, pinned: &SourceGitPinned) -> Result<PathBuf> {
     let path = git_commit_path(name, &pinned.source.repo, &pinned.commit_hash);
     // Checkout the pinned hash to the path.
-    if !path.exists() {
-        let _ = fs::create_dir_all(&path);
-    }
 
-    let lock = RwLock::new(
+    let _ = RwLock::new(
         fs::OpenOptions::new()
             .read(true)
             .write(true)
             .create(true)
             .open(&path.join(".forc-lock"))?,
-    );
-    let guard = lock.read().unwrap();
+    )
+    .read()?;
+
+    if path.exists() {
+        let _ = fs::remove_dir_all(&path);
+    }
+
     with_tmp_git_repo(&pinned.source, |repo| {
         // Change HEAD to point to the pinned commit.
         let id = git2::Oid::from_str(&pinned.commit_hash)?;
         repo.set_head_detached(id)?;
-
-        println!("inner_with_tmp: {:?}", guard);
 
         // Checkout HEAD to the target directory.
         let mut checkout = git2::build::CheckoutBuilder::new();
