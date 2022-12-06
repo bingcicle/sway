@@ -1624,9 +1624,7 @@ where
     )
     .read()?;
 
-    if repo_dir.exists() {
-        let _ = fs::remove_dir_all(&repo_dir);
-    }
+    println!("with_tmp_git_repo: {:?}", repo_dir);
 
     // Initialise the repository.
     let repo = git2::Repository::init(&repo_dir)
@@ -1819,6 +1817,7 @@ pub fn git_commit_path(name: &str, repo: &Url, commit_hash: &str) -> PathBuf {
 pub fn fetch_git(name: &str, pinned: &SourceGitPinned) -> Result<PathBuf> {
     let path = git_commit_path(name, &pinned.source.repo, &pinned.commit_hash);
     // Checkout the pinned hash to the path.
+    println!("fetch_git: {:?}", path);
 
     let _ = fs::create_dir_all(&path);
     let _ = RwLock::new(
@@ -1828,7 +1827,7 @@ pub fn fetch_git(name: &str, pinned: &SourceGitPinned) -> Result<PathBuf> {
             .create(true)
             .open(&path.join(".forc-lock"))?,
     )
-    .read()?;
+    .write()?;
 
     if path.exists() {
         let _ = fs::remove_dir_all(&path);
