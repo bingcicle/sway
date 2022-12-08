@@ -1789,7 +1789,6 @@ fn pin_pkg(
                 // using git?
                 if !repo_path.exists() {
                     info!("  Fetching {}", pinned_git.to_string());
-                    println!("fetch git outer: {}", repo_path.display());
                     fetch_git(fetch_id, &pinned.name, &pinned_git)?;
                 }
                 let path = find_dir_within(&repo_path, &pinned.name).ok_or_else(|| {
@@ -1842,6 +1841,14 @@ pub fn fetch_git(fetch_id: u64, name: &str, pinned: &SourceGitPinned) -> Result<
         let _ = fs::create_dir_all(git_checkouts_directory());
     }
 
+    let lock_opts = fs::OpenOptions::new()
+        .read(true)
+        .write(true)
+        .create(true)
+        .open(git_checkouts_directory().join(format!(".{}-{}-lock", fetch_id, name)))?;
+    let mut lock = RwLock::new(lock_opts);
+    let _guard = lock.write()?;
+
     // Checkout the pinned hash to the path.
     with_tmp_git_repo(fetch_id, name, &pinned.source, |repo| {
         // Change HEAD to point to the pinned commit.
@@ -1852,13 +1859,6 @@ pub fn fetch_git(fetch_id: u64, name: &str, pinned: &SourceGitPinned) -> Result<
             let _ = std::fs::remove_dir_all(&path);
         }
         std::fs::create_dir_all(&path)?;
-        let f = fs::OpenOptions::new()
-            .read(true)
-            .write(true)
-            .create(true)
-            .open(path.join(".forc_index"))?;
-        let mut lock = RwLock::new(f);
-        let mut guard = lock.write().expect("Could not acquire lock");
 
         // Checkout HEAD to the target directory.
         let mut checkout = git2::build::CheckoutBuilder::new();
@@ -1876,8 +1876,15 @@ pub fn fetch_git(fetch_id: u64, name: &str, pinned: &SourceGitPinned) -> Result<
             pinned.source.reference.clone(),
             pinned.commit_hash.clone(),
         );
+
         // Write the index file
-        write!(guard, "{}", serde_json::to_string(&source_index)?)?;
+        let opts = fs::OpenOptions::new()
+            .read(true)
+            .write(true)
+            .create(true)
+            .open(path.join(".forc_index"))?;
+        let mut f = RwLock::new(opts);
+        write!(f.write()?, "{}", serde_json::to_string(&source_index)?)?;
         Ok(())
     })?;
     Ok(path)
