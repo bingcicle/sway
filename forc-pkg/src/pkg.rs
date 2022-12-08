@@ -1638,7 +1638,7 @@ where
             .create(true)
             .open(&lock_file)?,
     );
-    let _guard = lock.try_write().expect("Could not acquire lock");
+    let _guard = lock.write().expect("Could not acquire lock");
 
     if repo_dir.exists() {
         let _ = std::fs::remove_dir_all(&repo_dir);
