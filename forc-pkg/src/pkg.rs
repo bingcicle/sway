@@ -1633,10 +1633,11 @@ where
     let mut lock = RwLock::new(
         fs::OpenOptions::new()
             .write(true)
+            .read(true)
             .create(true)
             .open(&lock_file)?,
     );
-    let _lock = lock.write()?;
+    let _guard = lock.write().expect("Could not acquire lock");
 
     if repo_dir.exists() {
         let _ = std::fs::remove_dir_all(&repo_dir);
@@ -1840,12 +1841,6 @@ pub fn fetch_git(fetch_id: u64, name: &str, pinned: &SourceGitPinned) -> Result<
         let id = git2::Oid::from_str(&pinned.commit_hash)?;
         repo.set_head_detached(id)?;
 
-        println!(
-            "fetch_git lock: {}",
-            git_checkouts_directory()
-                .join(format!(".{}-{}-lock", fetch_id, name))
-                .display()
-        );
         if !git_checkouts_directory().exists() {
             let _ = fs::create_dir_all(git_checkouts_directory());
         }
@@ -1853,11 +1848,12 @@ pub fn fetch_git(fetch_id: u64, name: &str, pinned: &SourceGitPinned) -> Result<
         let lock_file = git_checkouts_directory().join(format!(".{}-{}-lock", fetch_id, name));
         let mut lock = RwLock::new(
             fs::OpenOptions::new()
+                .read(true)
                 .write(true)
                 .create(true)
                 .open(&lock_file)?,
         );
-        let _lock = lock.write()?;
+        let _guard = lock.write().expect("Could not acquire lock");
 
         if path.exists() {
             let _ = std::fs::remove_dir_all(&path);
