@@ -1636,7 +1636,7 @@ where
             .create(true)
             .open(&lock_file)?,
     );
-    let _ = lock.write()?;
+    let _lock = lock.write()?;
 
     if repo_dir.exists() {
         let _ = std::fs::remove_dir_all(&repo_dir);
@@ -1857,7 +1857,7 @@ pub fn fetch_git(fetch_id: u64, name: &str, pinned: &SourceGitPinned) -> Result<
                 .create(true)
                 .open(&lock_file)?,
         );
-        let _ = lock.write()?;
+        let _lock = lock.write()?;
 
         if path.exists() {
             let _ = std::fs::remove_dir_all(&path);
