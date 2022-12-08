@@ -1637,7 +1637,7 @@ where
             .create(true)
             .open(&lock_file)?,
     );
-    let _guard = lock.write().expect("Could not acquire lock");
+    let _guard = lock.try_write().expect("Could not acquire lock");
 
     if repo_dir.exists() {
         let _ = std::fs::remove_dir_all(&repo_dir);
@@ -1788,6 +1788,7 @@ fn pin_pkg(
                 // using git?
                 if !repo_path.exists() {
                     info!("  Fetching {}", pinned_git.to_string());
+                    println!("fetch git outer: {}", repo_path.display());
                     fetch_git(fetch_id, &pinned.name, &pinned_git)?;
                 }
                 let path = find_dir_within(&repo_path, &pinned.name).ok_or_else(|| {
@@ -1835,25 +1836,27 @@ pub fn git_commit_path(name: &str, repo: &Url, commit_hash: &str) -> PathBuf {
 /// Returns the location of the checked out commit.
 pub fn fetch_git(fetch_id: u64, name: &str, pinned: &SourceGitPinned) -> Result<PathBuf> {
     let path = git_commit_path(name, &pinned.source.repo, &pinned.commit_hash);
+
+    if !git_checkouts_directory().exists() {
+        let _ = fs::create_dir_all(git_checkouts_directory());
+    }
+
+    let lock_file = git_checkouts_directory().join(format!(".{}-{}-lock", fetch_id, name));
+    let mut lock = RwLock::new(
+        fs::OpenOptions::new()
+            .read(true)
+            .write(true)
+            .create(true)
+            .open(&lock_file)?,
+    );
+    let _guard = lock.write().expect("Could not acquire lock");
+
+    println!("path: {}", path.display());
     // Checkout the pinned hash to the path.
     with_tmp_git_repo(fetch_id, name, &pinned.source, |repo| {
         // Change HEAD to point to the pinned commit.
         let id = git2::Oid::from_str(&pinned.commit_hash)?;
         repo.set_head_detached(id)?;
-
-        if !git_checkouts_directory().exists() {
-            let _ = fs::create_dir_all(git_checkouts_directory());
-        }
-
-        let lock_file = git_checkouts_directory().join(format!(".{}-{}-lock", fetch_id, name));
-        let mut lock = RwLock::new(
-            fs::OpenOptions::new()
-                .read(true)
-                .write(true)
-                .create(true)
-                .open(&lock_file)?,
-        );
-        let _guard = lock.write().expect("Could not acquire lock");
 
         if path.exists() {
             let _ = std::fs::remove_dir_all(&path);
