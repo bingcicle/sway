@@ -1155,11 +1155,15 @@ impl FromStr for SourceGitPinned {
             GitReference::Branch(reference[BRANCH.len()..].to_string())
         } else if reference.find(TAG) == Some(0) {
             GitReference::Tag(reference[TAG.len()..].to_string())
-        } else if reference == "rev" {
+        }
+        // This is a comment.
+        else if reference == "rev" {
             GitReference::Rev(commit_hash.to_string())
         } else if reference == "default-branch" {
             GitReference::DefaultBranch
-        } else {
+        }
+        // This is another comment.
+        else {
             return Err(SourceGitPinnedParseError::Reference);
         };
 
@@ -1180,7 +1184,9 @@ impl FromStr for SourcePinned {
             SourcePinned::Member
         } else if let Ok(src) = SourcePathPinned::from_str(s) {
             SourcePinned::Path(src)
-        } else if let Ok(src) = SourceGitPinned::from_str(s) {
+        }
+        // This is a comment
+        else if let Ok(src) = SourceGitPinned::from_str(s) {
             SourcePinned::Git(src)
         } else {
             // TODO: Try parse registry source.
@@ -1612,22 +1618,23 @@ where
 {
     // Clear existing temporary directory if it exists.
     let repo_dir = tmp_git_repo_dir(fetch_id, name, &source.repo);
-    println!(
-        "with: {}",
-        git_checkouts_directory()
-            .join(repo_dir.file_name().unwrap_or_default())
-            .display()
-    );
     if !git_checkouts_directory().exists() {
         let _ = fs::create_dir_all(git_checkouts_directory());
     }
-    let lock_file = Path::new(".")
-        .join(git_checkouts_directory().join(repo_dir.file_name().unwrap_or_default()));
+
+    let lock_file = git_checkouts_directory().join(format!(
+        ".{}-lock",
+        repo_dir
+            .file_name()
+            .unwrap_or_default()
+            .to_str()
+            .unwrap_or_default()
+    ));
     let mut lock = RwLock::new(
         fs::OpenOptions::new()
             .write(true)
             .create(true)
-            .open(lock_file)?,
+            .open(&lock_file)?,
     );
     let _ = lock.write()?;
 
@@ -1661,6 +1668,7 @@ where
 
     // Clean up the temporary directory.
     let _ = std::fs::remove_dir_all(&repo_dir);
+    let _ = std::fs::remove_file(lock_file);
     Ok(output)
 }
 
@@ -1832,17 +1840,25 @@ pub fn fetch_git(fetch_id: u64, name: &str, pinned: &SourceGitPinned) -> Result<
         let id = git2::Oid::from_str(&pinned.commit_hash)?;
         repo.set_head_detached(id)?;
 
-        println!("inner with: {}", path.display());
+        println!(
+            "fetch_git lock: {}",
+            git_checkouts_directory()
+                .join(format!(".{}-{}-lock", fetch_id, name))
+                .display()
+        );
+        if !git_checkouts_directory().exists() {
+            let _ = fs::create_dir_all(git_checkouts_directory());
+        }
 
-        let lock_file = Path::new(".")
-            .join(git_checkouts_directory().join(path.file_name().unwrap_or_default()));
+        let lock_file = git_checkouts_directory().join(format!(".{}-{}-lock", fetch_id, name));
         let mut lock = RwLock::new(
             fs::OpenOptions::new()
                 .write(true)
                 .create(true)
-                .open(lock_file)?,
+                .open(&lock_file)?,
         );
         let _ = lock.write()?;
+
         if path.exists() {
             let _ = std::fs::remove_dir_all(&path);
         }
@@ -1869,6 +1885,7 @@ pub fn fetch_git(fetch_id: u64, name: &str, pinned: &SourceGitPinned) -> Result<
             path.join(".forc_index"),
             serde_json::to_string(&source_index)?,
         )?;
+        let _ = std::fs::remove_file(lock_file);
         Ok(())
     })?;
     Ok(path)

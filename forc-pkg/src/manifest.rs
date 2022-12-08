@@ -33,7 +33,9 @@ impl ManifestFile {
                 // This might be a workspace manifest file
                 let workspace_manifest_file = WorkspaceManifestFile::from_dir(manifest_dir)?;
                 ManifestFile::Workspace(workspace_manifest_file)
-            } else {
+            }
+            // This might be a workspace manifest file
+            else {
                 bail!("{}", e)
             }
         } else if let Ok(pkg_manifest) = maybe_pkg_manifest {
