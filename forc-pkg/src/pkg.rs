@@ -2013,16 +2013,16 @@ where
                     // Get the index file from the found path
                     let index_file_path = repo_dir_path.join(".forc_index");
                     if index_file_path.exists() {
-                        if let Ok(index_file) = fs::read_to_string(index_file_path) {
-                            let index_lock_path = repo_dir_path.join(".forc_index.lock");
-                            let lock_file = fs::OpenOptions::new()
-                                .read(true)
-                                .write(true)
-                                .create(true)
-                                .open(index_lock_path)?;
+                        let index_lock_path = repo_dir_path.join(".forc_index-lock");
+                        let lock_file = fs::OpenOptions::new()
+                            .read(true)
+                            .write(true)
+                            .create(true)
+                            .open(index_lock_path)?;
+                        let lock = RwLock::new(lock_file);
+                        let _guard = lock.read()?;
 
-                            let lock = RwLock::new(lock_file);
-                            let _ = lock.read()?;
+                        if let Ok(index_file) = fs::read_to_string(index_file_path) {
                             let index = serde_json::from_str(&index_file)?;
                             f(index, repo_dir_path)?;
                         }
