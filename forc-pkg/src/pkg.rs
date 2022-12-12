@@ -1643,6 +1643,7 @@ where
     if repo_dir.exists() {
         let _ = std::fs::remove_dir_all(&repo_dir);
     }
+    std::fs::create_dir_all(&repo_dir)?;
 
     // Initialise the repository.
     let repo = git2::Repository::init(&repo_dir)
