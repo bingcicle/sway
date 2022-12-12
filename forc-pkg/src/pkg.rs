@@ -18,6 +18,7 @@ use petgraph::{
     Directed, Direction,
 };
 use serde::{Deserialize, Serialize};
+use std::io::Read;
 use std::io::Write;
 use std::{
     collections::{hash_map, BTreeMap, BTreeSet, HashMap, HashSet},
@@ -2009,10 +2010,23 @@ where
                 if repo_dir.file_type()?.is_dir() {
                     // Get the path of the current repo
                     let repo_dir_path = repo_dir.path();
+
                     // Get the index file from the found path
-                    if let Ok(index_file) = fs::read_to_string(repo_dir_path.join(".forc_index")) {
-                        let index = serde_json::from_str(&index_file)?;
-                        f(index, repo_dir_path)?;
+                    let index_file_path = repo_dir_path.join(".forc_index");
+                    if index_file_path.exists() {
+                        if let Ok(index_file) = fs::read_to_string(index_file_path) {
+                            let index_lock_path = repo_dir_path.join(".forc_index.lock");
+                            let lock_file = fs::OpenOptions::new()
+                                .read(true)
+                                .write(true)
+                                .create(true)
+                                .open(index_lock_path)?;
+
+                            let lock = RwLock::new(lock_file);
+                            let _ = lock.read()?;
+                            let index = serde_json::from_str(&index_file)?;
+                            f(index, repo_dir_path)?;
+                        }
                     }
                 }
             }
