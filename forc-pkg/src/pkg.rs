@@ -1670,7 +1670,6 @@ where
 
     // Clean up the temporary directory.
     let _ = std::fs::remove_dir_all(&repo_dir);
-    let _ = std::fs::remove_file(lock_file);
     Ok(output)
 }
 
