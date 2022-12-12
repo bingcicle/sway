@@ -1787,6 +1787,22 @@ fn pin_pkg(
                 // directories, however we should add some code to validate this. E.g. can we
                 // recreate the git hash by hashing the directory or something along these lines
                 // using git?
+
+                if !git_checkouts_directory().exists() {
+                    let _ = fs::create_dir_all(git_checkouts_directory());
+                }
+
+                let lock_opts = fs::OpenOptions::new()
+                    .read(true)
+                    .write(true)
+                    .create(true)
+                    .open(
+                        git_checkouts_directory()
+                            .join(format!(".{}-{}-lock", &fetch_id, &pinned.name)),
+                    )?;
+                let mut lock = RwLock::new(lock_opts);
+                let _guard = lock.write()?;
+
                 if !repo_path.exists() {
                     info!("  Fetching {}", pinned_git.to_string());
                     fetch_git(fetch_id, &pinned.name, &pinned_git)?;
@@ -1836,19 +1852,6 @@ pub fn git_commit_path(name: &str, repo: &Url, commit_hash: &str) -> PathBuf {
 /// Returns the location of the checked out commit.
 pub fn fetch_git(fetch_id: u64, name: &str, pinned: &SourceGitPinned) -> Result<PathBuf> {
     let path = git_commit_path(name, &pinned.source.repo, &pinned.commit_hash);
-
-    if !git_checkouts_directory().exists() {
-        let _ = fs::create_dir_all(git_checkouts_directory());
-    }
-
-    let lock_opts = fs::OpenOptions::new()
-        .read(true)
-        .write(true)
-        .create(true)
-        .open(git_checkouts_directory().join(format!(".{}-{}-lock", fetch_id, name)))?;
-    let mut lock = RwLock::new(lock_opts);
-    let _guard = lock.write()?;
-
     // Checkout the pinned hash to the path.
     with_tmp_git_repo(fetch_id, name, &pinned.source, |repo| {
         // Change HEAD to point to the pinned commit.
