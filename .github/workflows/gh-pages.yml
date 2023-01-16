@@ -67,6 +67,7 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./docs/book/${{ matrix.doc_type }}
           destination_dir: master/${{ matrix.doc_type }}
+          keep_files: true
         if: github.ref == 'refs/heads/master'
 
 
