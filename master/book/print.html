@@ -3608,18 +3608,546 @@ custom_lib = { path = &quot;../custom_lib&quot; }
 <p>To update dependencies in your Forc directory you can run <code>forc update</code>. For <code>path</code> dependencies this will have no effect. For <code>git</code> dependencies with a <code>branch</code> reference, this will update the project to use the latest commit for the given branch.</p>
 <div style="break-before: page; page-break-before: always;"></div><!-- markdownlint-disable MD041 -->
 <p>Here are a list of commands available to forc:</p>
-<div style="break-before: page; page-break-before: always;"></div><h1 id="forc-addr2line"><a class="header" href="#forc-addr2line">forc addr2line</a></h1>
-<div style="break-before: page; page-break-before: always;"></div><h1 id="forc-build"><a class="header" href="#forc-build">forc build</a></h1>
-<div style="break-before: page; page-break-before: always;"></div><h1 id="forc-check"><a class="header" href="#forc-check">forc check</a></h1>
-<div style="break-before: page; page-break-before: always;"></div><h1 id="forc-clean"><a class="header" href="#forc-clean">forc clean</a></h1>
-<div style="break-before: page; page-break-before: always;"></div><h1 id="forc-completions"><a class="header" href="#forc-completions">forc completions</a></h1>
-<div style="break-before: page; page-break-before: always;"></div><h1 id="forc-init"><a class="header" href="#forc-init">forc init</a></h1>
-<div style="break-before: page; page-break-before: always;"></div><h1 id="forc-new"><a class="header" href="#forc-new">forc new</a></h1>
-<div style="break-before: page; page-break-before: always;"></div><h1 id="forc-parse-bytecode"><a class="header" href="#forc-parse-bytecode">forc parse-bytecode</a></h1>
-<div style="break-before: page; page-break-before: always;"></div><h1 id="forc-plugins"><a class="header" href="#forc-plugins">forc plugins</a></h1>
-<div style="break-before: page; page-break-before: always;"></div><h1 id="forc-test"><a class="header" href="#forc-test">forc test</a></h1>
-<div style="break-before: page; page-break-before: always;"></div><h1 id="forc-update"><a class="header" href="#forc-update">forc update</a></h1>
-<div style="break-before: page; page-break-before: always;"></div><h1 id="forc-template"><a class="header" href="#forc-template">forc template</a></h1>
+<ul>
+<li><a href="forc/commands/./forc_addr2line.html">forc addr2line</a></li>
+<li><a href="forc/commands/./forc_build.html">forc build</a></li>
+<li><a href="forc/commands/./forc_check.html">forc check</a></li>
+<li><a href="forc/commands/./forc_clean.html">forc clean</a></li>
+<li><a href="forc/commands/./forc_completions.html">forc completions</a></li>
+<li><a href="forc/commands/./forc_init.html">forc init</a></li>
+<li><a href="forc/commands/./forc_new.html">forc new</a></li>
+<li><a href="forc/commands/./forc_parse-bytecode.html">forc parse-bytecode</a></li>
+<li><a href="forc/commands/./forc_plugins.html">forc plugins</a></li>
+<li><a href="forc/commands/./forc_test.html">forc test</a></li>
+<li><a href="forc/commands/./forc_update.html">forc update</a></li>
+<li><a href="forc/commands/./forc_template.html">forc template</a></li>
+</ul>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="forc-addr2line"><a class="header" href="#forc-addr2line">forc-addr2line</a></h1>
+<p>Show location and context of an opcode address in its source file</p>
+<h2 id="usage"><a class="header" href="#usage">USAGE:</a></h2>
+<p>forc addr2line [OPTIONS] --sourcemap-path &lt;SOURCEMAP_PATH&gt; --opcode-index &lt;OPCODE_INDEX&gt;</p>
+<h2 id="options"><a class="header" href="#options">OPTIONS:</a></h2>
+<p><code>-c</code>, <code>--context</code> &lt;<em>CONTEXT</em>&gt;</p>
+<p>How many lines of context to show [default: 2]</p>
+<p><code>-g</code>, <code>--sourcemap-path</code> &lt;<em>SOURCEMAP_PATH</em>&gt;</p>
+<p>Source file mapping in JSON format</p>
+<p><code>-h</code>, <code>--help</code> </p>
+<p>Print help information</p>
+<p><code>-i</code>, <code>--opcode-index</code> &lt;<em>OPCODE_INDEX</em>&gt;</p>
+<p>Opcode index</p>
+<p><code>-L</code>, <code>--log-level</code> &lt;<em>LOG_LEVEL</em>&gt;</p>
+<p>Set the log level</p>
+<p><code>-s</code>, <code>--silent</code> </p>
+<p>Silence all output</p>
+<p><code>-S</code>, <code>--search-dir</code> &lt;<em>SEARCH_DIR</em>&gt;</p>
+<p>Where to search for the project root [default: .]</p>
+<p><code>-v</code>, <code>--verbose</code> </p>
+<p>Use verbose output</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="forc-build"><a class="header" href="#forc-build">forc-build</a></h1>
+<p>Compile the current or target project.</p>
+<p>The output produced will depend on the project's program type.</p>
+<ul>
+<li>
+<p><code>script</code>, <code>predicate</code> and <code>contract</code> projects will produce their bytecode in binary format
+<code>&lt;project-name&gt;.bin</code>.</p>
+</li>
+<li>
+<p><code>script</code> projects will also produce a file containing the hash of the bytecode binary
+<code>&lt;project-name&gt;-bin-hash</code> (using <code>fuel_cypto::Hasher</code>).</p>
+</li>
+<li>
+<p><code>predicate</code> projects will also produce a file containing the <strong>root</strong> hash of the bytecode binary
+<code>&lt;project-name&gt;-bin-root</code> (using <code>fuel_tx::Contract::root_from_code</code>).</p>
+</li>
+<li>
+<p><code>contract</code> and <code>library</code> projects will also produce the public ABI in JSON format
+<code>&lt;project-name&gt;-abi.json</code>.</p>
+</li>
+</ul>
+<h2 id="usage-1"><a class="header" href="#usage-1">USAGE:</a></h2>
+<p>forc build [OPTIONS]</p>
+<h2 id="options-1"><a class="header" href="#options-1">OPTIONS:</a></h2>
+<p><code>--build-profile</code> &lt;<em>BUILD_PROFILE</em>&gt;</p>
+<p>Name of the build profile to use. If it is not specified, forc will use debug build
+profile</p>
+<p><code>--build-target</code> &lt;<em>BUILD_TARGET</em>&gt;</p>
+<p>Build target to use for code generation</p>
+<p>[default: fuel]
+[possible values: fuel, evm]</p>
+<p><code>-g</code>, <code>--debug-outfile</code> &lt;<em>DEBUG_OUTFILE</em>&gt;</p>
+<p>If set, outputs source file mapping in JSON format</p>
+<p><code>-h</code>, <code>--help</code> </p>
+<p>Print help information</p>
+<p><code>-L</code>, <code>--log-level</code> &lt;<em>LOG_LEVEL</em>&gt;</p>
+<p>Set the log level</p>
+<p><code>--locked</code> </p>
+<p>Requires that the Forc.lock file is up-to-date. If the lock file is missing, or it needs
+to be updated, Forc will exit with an error</p>
+<p><code>--minify-json-abi</code> </p>
+<p>By default the JSON for ABIs is formatted for human readability. By using this option
+JSON output will be &quot;minified&quot;, i.e. all on one line without whitespace</p>
+<p><code>--minify-json-storage-slots</code> </p>
+<p>By default the JSON for initial storage slots is formatted for human readability. By
+using this option JSON output will be &quot;minified&quot;, i.e. all on one line without
+whitespace</p>
+<p><code>-o</code> &lt;<em>BINARY_OUTFILE</em>&gt;</p>
+<p>If set, outputs a binary file representing the script bytes</p>
+<p><code>--offline</code> </p>
+<p>Offline mode, prevents Forc from using the network when managing dependencies. Meaning
+it will only try to use previously downloaded dependencies</p>
+<p><code>--output-directory</code> &lt;<em>OUTPUT_DIRECTORY</em>&gt;</p>
+<p>The directory in which the sway compiler output artifacts are placed.</p>
+<p>By default, this is <code>&lt;project-root&gt;/out</code>.</p>
+<p><code>-p</code>, <code>--path</code> &lt;<em>PATH</em>&gt;</p>
+<p>Path to the project, if not specified, current working directory will be used</p>
+<p><code>--print-ast</code> </p>
+<p>Print the generated Sway AST (Abstract Syntax Tree)</p>
+<p><code>--print-dca-graph</code> </p>
+<p>Print the computed Sway DCA graph</p>
+<p><code>--print-finalized-asm</code> </p>
+<p>Print the finalized ASM.</p>
+<p>This is the state of the ASM with registers allocated and optimisations applied.</p>
+<p><code>--print-intermediate-asm</code> </p>
+<p>Print the generated ASM.</p>
+<p>This is the state of the ASM prior to performing register allocation and other ASM
+optimisations.</p>
+<p><code>--print-ir</code> </p>
+<p>Print the generated Sway IR (Intermediate Representation)</p>
+<p><code>--release</code> </p>
+<p>Use release build plan. If a custom release plan is not specified, it is implicitly
+added to the manifest file.</p>
+<p>If --build-profile is also provided, forc omits this flag and uses provided
+build-profile.</p>
+<p><code>-s</code>, <code>--silent</code> </p>
+<p>Silence all output</p>
+<p><code>-t</code>, <code>--terse</code> </p>
+<p>Terse mode. Limited warning and error output</p>
+<p><code>--tests</code> </p>
+<p>Also build all tests within the project</p>
+<p><code>--time-phases</code> </p>
+<p>Output the time elapsed over each part of the compilation process</p>
+<p><code>-v</code>, <code>--verbose</code> </p>
+<p>Use verbose output<!-- markdownlint-disable MD041 --></p>
+<h2 id="example-2"><a class="header" href="#example-2">EXAMPLE</a></h2>
+<p>Compile the sway files of the current project.</p>
+<pre><code class="language-console">$ forc build
+Compiled script &quot;my-fuel-project&quot;.
+Bytecode size is 28 bytes.
+</code></pre>
+<p>The output produced will depend on the project's program type. Building script, predicate and contract projects will produce their bytecode in binary format <code>&lt;project-name&gt;.bin</code>. Building contracts and libraries will also produce the public ABI in JSON format <code>&lt;project-name&gt;-abi.json</code>.</p>
+<p>By default, these artifacts are placed in the <code>out/</code> directory.</p>
+<p>If a <code>Forc.lock</code> file did not yet exist, it will be created in order to pin each of the dependencies listed in <code>Forc.toml</code> to a specific commit or version.</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="forc-check"><a class="header" href="#forc-check">forc-check</a></h1>
+<p>Check the current or target project and all of its dependencies for errors.</p>
+<p>This will essentially compile the packages without performing the final step of code generation,
+which is faster than running forc build.</p>
+<h2 id="usage-2"><a class="header" href="#usage-2">USAGE:</a></h2>
+<p>forc check [OPTIONS] [BUILD_TARGET]</p>
+<h2 id="args"><a class="header" href="#args">ARGS:</a></h2>
+<p>&lt;<em>BUILD_TARGET</em>&gt;
+Build target to use for code generation</p>
+<p>[default: fuel]
+[possible values: fuel, evm]</p>
+<h2 id="options-2"><a class="header" href="#options-2">OPTIONS:</a></h2>
+<p><code>--disable-tests</code> </p>
+<p>Disable checking unit tests</p>
+<p><code>-h</code>, <code>--help</code> </p>
+<p>Print help information</p>
+<p><code>-L</code>, <code>--log-level</code> &lt;<em>LOG_LEVEL</em>&gt;</p>
+<p>Set the log level</p>
+<p><code>--locked</code> </p>
+<p>Requires that the Forc.lock file is up-to-date. If the lock file is missing, or it needs
+to be updated, Forc will exit with an error</p>
+<p><code>--offline</code> </p>
+<p>Offline mode, prevents Forc from using the network when managing dependencies. Meaning
+it will only try to use previously downloaded dependencies</p>
+<p><code>-p</code>, <code>--path</code> &lt;<em>PATH</em>&gt;</p>
+<p>Path to the project, if not specified, current working directory will be used</p>
+<p><code>-s</code>, <code>--silent</code> </p>
+<p>Silence all output</p>
+<p><code>-t</code>, <code>--terse</code> </p>
+<p>Terse mode. Limited warning and error output</p>
+<p><code>-v</code>, <code>--verbose</code> </p>
+<p>Use verbose output</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="forc-clean"><a class="header" href="#forc-clean">forc-clean</a></h1>
+<p>Removes the default forc compiler output artifact directory, i.e. <code>&lt;project-name&gt;/out</code></p>
+<h2 id="usage-3"><a class="header" href="#usage-3">USAGE:</a></h2>
+<p>forc clean [OPTIONS]</p>
+<h2 id="options-3"><a class="header" href="#options-3">OPTIONS:</a></h2>
+<p><code>-h</code>, <code>--help</code> </p>
+<p>Print help information</p>
+<p><code>-L</code>, <code>--log-level</code> &lt;<em>LOG_LEVEL</em>&gt;</p>
+<p>Set the log level</p>
+<p><code>-p</code>, <code>--path</code> &lt;<em>PATH</em>&gt;</p>
+<p>Path to the project, if not specified, current working directory
+will be used</p>
+<p><code>-s</code>, <code>--silent</code> </p>
+<p>Silence all output</p>
+<p><code>-v</code>, <code>--verbose</code> </p>
+<p>Use verbose output</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="forc-completions"><a class="header" href="#forc-completions">forc-completions</a></h1>
+<p>Generate tab-completion scripts for your shell</p>
+<h2 id="usage-4"><a class="header" href="#usage-4">USAGE:</a></h2>
+<p>forc completions [OPTIONS] --shell <SHELL></p>
+<h2 id="options-4"><a class="header" href="#options-4">OPTIONS:</a></h2>
+<p><code>-h</code>, <code>--help</code> </p>
+<p>Print help information</p>
+<p><code>-L</code>, <code>--log-level</code> &lt;<em>LOG_LEVEL</em>&gt;</p>
+<p>Set the log level</p>
+<p><code>-s</code>, <code>--silent</code> </p>
+<p>Silence all output</p>
+<p><code>-S</code>, <code>--shell</code> &lt;<em>SHELL</em>&gt;</p>
+<p>Specify shell to enable tab-completion for</p>
+<p>[possible values: zsh, bash, fish, powershell, elvish]</p>
+<p>For more info:
+https://fuellabs.github.io/sway/latest/forc/commands/forc_completions.html</p>
+<p><code>-v</code>, <code>--verbose</code> </p>
+<p>Use verbose output<!-- markdownlint-disable MD041 --></p>
+<h2 id="discussion"><a class="header" href="#discussion">DISCUSSION</a></h2>
+<p>Enable tab completion for Bash, Fish, Zsh, or PowerShell
+The script is output on <code>stdout</code>, allowing one to re-direct the
+output to the file of their choosing. Where you place the file
+will depend on which shell, and which operating system you are
+using. Your particular configuration may also determine where
+these scripts need to be placed.</p>
+<p>Here are some common set ups for the three supported shells under
+Unix and similar operating systems (such as GNU/Linux).</p>
+<h3 id="bash"><a class="header" href="#bash">BASH</a></h3>
+<p>Completion files are commonly stored in <code>/etc/bash_completion.d/</code> for
+system-wide commands, but can be stored in
+<code>~/.local/share/bash-completion/completions</code> for user-specific commands.
+Run the command:</p>
+<pre><code class="language-sh">mkdir -p ~/.local/share/bash-completion/completions
+forc completions --shell=bash &gt;&gt; ~/.local/share/bash-completion/completions/forc
+</code></pre>
+<p>This installs the completion script. You may have to log out and
+log back in to your shell session for the changes to take effect.</p>
+<h3 id="bash-macoshomebrew"><a class="header" href="#bash-macoshomebrew">BASH (macOS/Homebrew)</a></h3>
+<p>Homebrew stores bash completion files within the Homebrew directory.
+With the <code>bash-completion</code> brew formula installed, run the command:</p>
+<pre><code class="language-sh">mkdir -p $(brew --prefix)/etc/bash_completion.d
+forc completions --shell=bash &gt; $(brew --prefix)/etc/bash_completion.d/forc.bash-completion
+</code></pre>
+<h3 id="fish"><a class="header" href="#fish">FISH</a></h3>
+<p>Fish completion files are commonly stored in
+<code>$HOME/.config/fish/completions</code>. Run the command:</p>
+<pre><code class="language-sh">mkdir -p ~/.config/fish/completions
+forc completions --shell=fish &gt; ~/.config/fish/completions/forc.fish
+</code></pre>
+<p>This installs the completion script. You may have to log out and
+log back in to your shell session for the changes to take effect.</p>
+<h3 id="zsh"><a class="header" href="#zsh">ZSH</a></h3>
+<p>ZSH completions are commonly stored in any directory listed in
+your <code>$fpath</code> variable. To use these completions, you must either
+add the generated script to one of those directories, or add your
+own to this list.</p>
+<p>Adding a custom directory is often the safest bet if you are
+unsure of which directory to use. First create the directory; for
+this example we'll create a hidden directory inside our <code>$HOME</code>
+directory:</p>
+<pre><code class="language-sh">mkdir ~/.zfunc
+</code></pre>
+<p>Then add the following lines to your <code>.zshrc</code> just before
+<code>compinit</code>:</p>
+<pre><code class="language-sh">fpath+=~/.zfunc
+</code></pre>
+<p>Now you can install the completions script using the following
+command:</p>
+<pre><code class="language-sh">forc completions --shell=zsh &gt; ~/.zfunc/_forc
+</code></pre>
+<p>You must then either log out and log back in, or simply run</p>
+<pre><code class="language-sh">exec zsh
+</code></pre>
+<p>for the new completions to take effect.</p>
+<h3 id="custom-locations"><a class="header" href="#custom-locations">CUSTOM LOCATIONS</a></h3>
+<p>Alternatively, you could save these files to the place of your
+choosing, such as a custom directory inside your $HOME. Doing so
+will require you to add the proper directives, such as <code>source</code>ing
+inside your login script. Consult your shells documentation for
+how to add such directives.</p>
+<h3 id="powershell"><a class="header" href="#powershell">POWERSHELL</a></h3>
+<p>The powershell completion scripts require PowerShell v5.0+ (which
+comes with Windows 10, but can be downloaded separately for windows 7
+or 8.1).</p>
+<p>First, check if a profile has already been set</p>
+<pre><code class="language-sh">Test-Path $profile
+</code></pre>
+<p>If the above command returns <code>False</code> run the following</p>
+<pre><code class="language-sh">New-Item -path $profile -type file -force
+</code></pre>
+<p>Now open the file provided by <code>$profile</code> (if you used the
+<code>New-Item</code> command it will be
+<code>${env:USERPROFILE}\Documents\WindowsPowerShell\Microsoft.PowerShell_profile.ps1</code></p>
+<p>Next, we either save the completions file into our profile, or
+into a separate file and source it inside our profile. To save the
+completions into our profile simply use</p>
+<pre><code class="language-sh">forc completions --shell=powershell &gt;&gt; ${env:USERPROFILE}\Documents\WindowsPowerShell\Microsoft.PowerShell_profile.ps1
+</code></pre>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="forc-init"><a class="header" href="#forc-init">forc-init</a></h1>
+<p>Create a new Forc project in an existing directory</p>
+<h2 id="usage-5"><a class="header" href="#usage-5">USAGE:</a></h2>
+<p>forc init [OPTIONS]</p>
+<h2 id="options-5"><a class="header" href="#options-5">OPTIONS:</a></h2>
+<p><code>--contract</code> </p>
+<p>The default program type, excluding all flags or adding this flag
+creates a basic contract program</p>
+<p><code>-h</code>, <code>--help</code> </p>
+<p>Print help information</p>
+<p><code>-L</code>, <code>--log-level</code> &lt;<em>LOG_LEVEL</em>&gt;</p>
+<p>Set the log level</p>
+<p><code>--library</code> </p>
+<p>Create a package with a library target (src/lib.sw)</p>
+<p><code>--name</code> &lt;<em>NAME</em>&gt;</p>
+<p>Set the package name. Defaults to the directory name</p>
+<p><code>--path</code> &lt;<em>PATH</em>&gt;</p>
+<p>The directory in which the forc project will be initialized</p>
+<p><code>--predicate</code> </p>
+<p>Create a package with a predicate target (src/predicate.rs)</p>
+<p><code>-s</code>, <code>--silent</code> </p>
+<p>Silence all output</p>
+<p><code>--script</code> </p>
+<p>Create a package with a script target (src/main.sw)</p>
+<p><code>-v</code>, <code>--verbose</code> </p>
+<p>Use verbose output</p>
+<p><code>--workspace</code> </p>
+<p>Adding this flag creates an empty workspace<!-- markdownlint-disable MD041 --></p>
+<h2 id="example-3"><a class="header" href="#example-3">EXAMPLE</a></h2>
+<pre><code class="language-console">$ mkdir my-fuel-project
+$ cd my-fuel-project
+$ forc init
+$ tree
+.
+├── Forc.toml
+└── src
+    └── main.sw
+</code></pre>
+<p><code>Forc.toml</code> is the Forc manifest file, containing information about the project and dependencies.</p>
+<p>A <code>src/</code> directory is created, with a single <code>main.sw</code> Sway file in it.</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="forc-new"><a class="header" href="#forc-new">forc-new</a></h1>
+<p>Create a new Forc project at <code>&lt;path&gt;</code></p>
+<h2 id="usage-6"><a class="header" href="#usage-6">USAGE:</a></h2>
+<p>forc new [OPTIONS] <PATH></p>
+<h2 id="args-1"><a class="header" href="#args-1">ARGS:</a></h2>
+<p>&lt;<em>PATH</em>&gt;</p>
+<p>The path at which the project directory will be created</p>
+<h2 id="options-6"><a class="header" href="#options-6">OPTIONS:</a></h2>
+<p><code>--contract</code> </p>
+<p>The default program type. Excluding all flags or adding this flag
+creates a basic contract program</p>
+<p><code>-h</code>, <code>--help</code> </p>
+<p>Print help information</p>
+<p><code>-L</code>, <code>--log-level</code> &lt;<em>LOG_LEVEL</em>&gt;</p>
+<p>Set the log level</p>
+<p><code>--library</code> </p>
+<p>Adding this flag creates an empty library program</p>
+<p><code>--name</code> &lt;<em>NAME</em>&gt;</p>
+<p>Set the package name. Defaults to the directory name</p>
+<p><code>--predicate</code> </p>
+<p>Adding this flag creates an empty predicate program</p>
+<p><code>-s</code>, <code>--silent</code> </p>
+<p>Silence all output</p>
+<p><code>--script</code> </p>
+<p>Adding this flag creates an empty script program</p>
+<p><code>-v</code>, <code>--verbose</code> </p>
+<p>Use verbose output</p>
+<p><code>--workspace</code> </p>
+<p>Adding this flag creates an empty workspace<!-- markdownlint-disable MD041 --></p>
+<h2 id="example-4"><a class="header" href="#example-4">EXAMPLE</a></h2>
+<pre><code class="language-console">$ forc new my-fuel-project
+$ cd my-fuel-project
+$ tree
+.
+├── Forc.toml
+└── src
+    └── main.sw
+</code></pre>
+<p><code>Forc.toml</code> is the Forc manifest file, containing information about the project and dependencies.</p>
+<p>A <code>src/</code> directory is created, with a single <code>main.sw</code> Sway file in it.</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="forc-parse-bytecode"><a class="header" href="#forc-parse-bytecode">forc-parse-bytecode</a></h1>
+<p>Parse bytecode file into a debug format</p>
+<h2 id="usage-7"><a class="header" href="#usage-7">USAGE:</a></h2>
+<p>forc parse-bytecode [OPTIONS] &lt;FILE_PATH&gt;</p>
+<h2 id="args-2"><a class="header" href="#args-2">ARGS:</a></h2>
+<p>&lt;<em>FILE_PATH</em>&gt;</p>
+<h2 id="options-7"><a class="header" href="#options-7">OPTIONS:</a></h2>
+<p><code>-h</code>, <code>--help</code> </p>
+<p>Print help information</p>
+<p><code>-L</code>, <code>--log-level</code> &lt;<em>LOG_LEVEL</em>&gt;</p>
+<p>Set the log level</p>
+<p><code>-s</code>, <code>--silent</code> </p>
+<p>Silence all output</p>
+<p><code>-v</code>, <code>--verbose</code> </p>
+<p>Use verbose output<!-- markdownlint-disable MD041 --></p>
+<h2 id="example-5"><a class="header" href="#example-5">EXAMPLE</a></h2>
+<p>We can try this command with the initial project created using <code>forc init</code>, with the counter template:</p>
+<pre><code class="language-sh">forc new --template counter counter
+cd counter
+forc build -o obj
+</code></pre>
+<pre><code class="language-console">counter$ forc parse-bytecode obj
+
+  half-word   byte   op                   raw           notes
+          0   0      JI(4)                90 00 00 04   conditionally jumps to byte 16
+          1   4      NOOP                 47 00 00 00
+          2   8      Undefined            00 00 00 00   data section offset lo (0)
+          3   12     Undefined            00 00 00 c8   data section offset hi (200)
+          4   16     LW(63, 12, 1)        5d fc c0 01
+          5   20     ADD(63, 63, 12)      10 ff f3 00
+         ...
+         ...
+         ...
+         60   240    Undefined            00 00 00 00
+         61   244    Undefined            fa f9 0d d3
+         62   248    Undefined            00 00 00 00
+         63   252    Undefined            00 00 00 c8
+</code></pre>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="forc-plugins"><a class="header" href="#forc-plugins">forc-plugins</a></h1>
+<p>Find all forc plugins available via <code>PATH</code>.</p>
+<p>Prints information about each discovered plugin.</p>
+<h2 id="usage-8"><a class="header" href="#usage-8">USAGE:</a></h2>
+<p>forc plugins [OPTIONS]</p>
+<h2 id="options-8"><a class="header" href="#options-8">OPTIONS:</a></h2>
+<p><code>-d</code>, <code>--describe</code> </p>
+<p>Prints the long description associated with each listed plugin</p>
+<p><code>-h</code>, <code>--help</code> </p>
+<p>Print help information</p>
+<p><code>-L</code>, <code>--log-level</code> &lt;<em>LOG_LEVEL</em>&gt;</p>
+<p>Set the log level</p>
+<p><code>-p</code>, <code>--paths</code> </p>
+<p>Prints the absolute path to each discovered plugin</p>
+<p><code>-s</code>, <code>--silent</code> </p>
+<p>Silence all output</p>
+<p><code>-v</code>, <code>--verbose</code> </p>
+<p>Use verbose output</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="forc-test"><a class="header" href="#forc-test">forc-test</a></h1>
+<p>Run the Sway unit tests for the current project.</p>
+<p>NOTE: Previously this command was used to support Rust integration testing, however the provided
+behaviour served no benefit over running <code>cargo test</code> directly. The proposal to change the behaviour
+to support unit testing can be found at the following link:
+https://github.com/FuelLabs/sway/issues/1833</p>
+<p>Sway unit tests are functions decorated with the <code>#[test]</code> attribute. Each test is compiled as a
+unique entry point for a single program and has access to the namespace of the module in which it is
+declared.</p>
+<p>Unit tests decorated with the <code>#[test(script)]</code> attribute that are declared within <code>contract</code>
+projects may also call directly into their associated contract's ABI.</p>
+<p>Upon successful compilation, test scripts are executed to their completion. A test is considered a
+failure in the case that a revert (<code>rvrt</code>) instruction is encountered during execution. Otherwise,
+it is considered a success.</p>
+<h2 id="usage-9"><a class="header" href="#usage-9">USAGE:</a></h2>
+<p>forc test [OPTIONS] [FILTER]</p>
+<h2 id="args-3"><a class="header" href="#args-3">ARGS:</a></h2>
+<p>&lt;<em>FILTER</em>&gt;
+When specified, only tests containing the given string will be executed</p>
+<h2 id="options-9"><a class="header" href="#options-9">OPTIONS:</a></h2>
+<p><code>--build-profile</code> &lt;<em>BUILD_PROFILE</em>&gt;</p>
+<p>Name of the build profile to use. If it is not specified, forc will use debug build
+profile</p>
+<p><code>--build-target</code> &lt;<em>BUILD_TARGET</em>&gt;</p>
+<p>Build target to use for code generation</p>
+<p>[default: fuel]
+[possible values: fuel, evm]</p>
+<p><code>-g</code>, <code>--debug-outfile</code> &lt;<em>DEBUG_OUTFILE</em>&gt;</p>
+<p>If set, outputs source file mapping in JSON format</p>
+<p><code>-h</code>, <code>--help</code> </p>
+<p>Print help information</p>
+<p><code>-L</code>, <code>--log-level</code> &lt;<em>LOG_LEVEL</em>&gt;</p>
+<p>Set the log level</p>
+<p><code>--locked</code> </p>
+<p>Requires that the Forc.lock file is up-to-date. If the lock file is missing, or it needs
+to be updated, Forc will exit with an error</p>
+<p><code>--minify-json-abi</code> </p>
+<p>By default the JSON for ABIs is formatted for human readability. By using this option
+JSON output will be &quot;minified&quot;, i.e. all on one line without whitespace</p>
+<p><code>--minify-json-storage-slots</code> </p>
+<p>By default the JSON for initial storage slots is formatted for human readability. By
+using this option JSON output will be &quot;minified&quot;, i.e. all on one line without
+whitespace</p>
+<p><code>-o</code> &lt;<em>BINARY_OUTFILE</em>&gt;</p>
+<p>If set, outputs a binary file representing the script bytes</p>
+<p><code>--offline</code> </p>
+<p>Offline mode, prevents Forc from using the network when managing dependencies. Meaning
+it will only try to use previously downloaded dependencies</p>
+<p><code>--output-directory</code> &lt;<em>OUTPUT_DIRECTORY</em>&gt;</p>
+<p>The directory in which the sway compiler output artifacts are placed.</p>
+<p>By default, this is <code>&lt;project-root&gt;/out</code>.</p>
+<p><code>-p</code>, <code>--path</code> &lt;<em>PATH</em>&gt;</p>
+<p>Path to the project, if not specified, current working directory will be used</p>
+<p><code>--print-ast</code> </p>
+<p>Print the generated Sway AST (Abstract Syntax Tree)</p>
+<p><code>--print-dca-graph</code> </p>
+<p>Print the computed Sway DCA graph</p>
+<p><code>--print-finalized-asm</code> </p>
+<p>Print the finalized ASM.</p>
+<p>This is the state of the ASM with registers allocated and optimisations applied.</p>
+<p><code>--print-intermediate-asm</code> </p>
+<p>Print the generated ASM.</p>
+<p>This is the state of the ASM prior to performing register allocation and other ASM
+optimisations.</p>
+<p><code>--print-ir</code> </p>
+<p>Print the generated Sway IR (Intermediate Representation)</p>
+<p><code>--release</code> </p>
+<p>Use release build plan. If a custom release plan is not specified, it is implicitly
+added to the manifest file.</p>
+<p>If --build-profile is also provided, forc omits this flag and uses provided
+build-profile.</p>
+<p><code>-s</code>, <code>--silent</code> </p>
+<p>Silence all output</p>
+<p><code>-t</code>, <code>--terse</code> </p>
+<p>Terse mode. Limited warning and error output</p>
+<p><code>--time-phases</code> </p>
+<p>Output the time elapsed over each part of the compilation process</p>
+<p><code>-v</code>, <code>--verbose</code> </p>
+<p>Use verbose output</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="forc-update"><a class="header" href="#forc-update">forc-update</a></h1>
+<p>Update dependencies in the Forc dependencies directory</p>
+<h2 id="usage-10"><a class="header" href="#usage-10">USAGE:</a></h2>
+<p>forc update [OPTIONS]</p>
+<h2 id="options-10"><a class="header" href="#options-10">OPTIONS:</a></h2>
+<p><code>-c</code>, <code>--check</code> </p>
+<p>Checks if the dependencies have newer versions. Won't actually
+perform the update, will output which ones are up-to-date and
+outdated</p>
+<p><code>-d</code> &lt;<em>TARGET_DEPENDENCY</em>&gt;</p>
+<p>Dependency to be updated. If not set, all dependencies will be
+updated</p>
+<p><code>-h</code>, <code>--help</code> </p>
+<p>Print help information</p>
+<p><code>-L</code>, <code>--log-level</code> &lt;<em>LOG_LEVEL</em>&gt;</p>
+<p>Set the log level</p>
+<p><code>-p</code>, <code>--path</code> &lt;<em>PATH</em>&gt;</p>
+<p>Path to the project, if not specified, current working directory
+will be used</p>
+<p><code>-s</code>, <code>--silent</code> </p>
+<p>Silence all output</p>
+<p><code>-v</code>, <code>--verbose</code> </p>
+<p>Use verbose output</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="forc-template"><a class="header" href="#forc-template">forc-template</a></h1>
+<p>Create a new Forc project from a git template</p>
+<h2 id="usage-11"><a class="header" href="#usage-11">USAGE:</a></h2>
+<p>forc template [OPTIONS] &lt;PROJECT_NAME&gt;</p>
+<h2 id="args-4"><a class="header" href="#args-4">ARGS:</a></h2>
+<p>&lt;<em>PROJECT_NAME</em>&gt;</p>
+<p>The name of the project that will be created</p>
+<h2 id="options-11"><a class="header" href="#options-11">OPTIONS:</a></h2>
+<p><code>-h</code>, <code>--help</code> </p>
+<p>Print help information</p>
+<p><code>-L</code>, <code>--log-level</code> &lt;<em>LOG_LEVEL</em>&gt;</p>
+<p>Set the log level</p>
+<p><code>-s</code>, <code>--silent</code> </p>
+<p>Silence all output</p>
+<p><code>-t</code>, <code>--template-name</code> &lt;<em>TEMPLATE_NAME</em>&gt;</p>
+<p>The name of the template that needs to be fetched and used from git repo provided</p>
+<p><code>-u</code>, <code>--url</code> &lt;<em>URL</em>&gt;</p>
+<p>The template url, should be a git repo [default: https://github.com/fuellabs/sway]</p>
+<p><code>-v</code>, <code>--verbose</code> </p>
+<p>Use verbose output<!-- markdownlint-disable MD041 --></p>
+<h2 id="example-6"><a class="header" href="#example-6">EXAMPLE</a></h2>
+<pre><code class="language-sh">forc template --url https://github.com/owner/template/ --project_name my_example_project
+</code></pre>
+<p>The command above fetches the <code>HEAD</code> of the <code>template</code> repo and searches for <code>Forc.toml</code> at the root of the fetched repo. It will fetch the repo and prepare a new <code>Forc.toml</code> with the new project name. Outputs everything to <code>current_dir/project_name</code>.</p>
+<pre><code class="language-sh">forc template --url https://github.com/FuelLabs/sway --template_name counter --project_name my_example_project
+</code></pre>
+<p>The command above fetches the HEAD of the <code>sway</code> repo and searches for <code>counter</code> example inside it (there is an example called <code>counter</code> under <code>sway/examples</code>). It will fetch the <code>counter</code> example and prepare a new <code>Forc.toml</code> with the new project name. Outputs everything to <code>current_dir/project_name</code>.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="plugins"><a class="header" href="#plugins">Plugins</a></h1>
 <p>Plugins can be used to extend <code>forc</code> with new commands that go beyond the native commands mentioned in the previous chapter. While the Fuel ecosystem provides a few commonly useful plugins (<code>forc-fmt</code>, <code>forc-client</code>, <code>forc-lsp</code>, <code>forc-explore</code>), anyone can write their own!</p>
 <p>Let's install a plugin, <code>forc-explore</code>, and see what's underneath the plugin:</p>
@@ -3683,11 +4211,199 @@ Server::run{addr=127.0.0.1:3030}: listening on http://127.0.0.1:3030
 <p>Also the default value of the &quot;gas price&quot; parameter is 0 for both <code>forc-deploy</code> and <code>forc-run</code>. Without changing it you will get an error complaining about gas price being too low. While using testnet you can pass <code>--gas-price 1</code> to overcome this issue. So a complete command for deploying to the testnet would look like:</p>
 <pre><code class="language-sh">forc-deploy --url https://node-beta-1.fuel.network/graphql:443 --gas-price 1
 </code></pre>
-<div style="break-before: page; page-break-before: always;"></div><h1 id="forc-deploy"><a class="header" href="#forc-deploy">forc deploy</a></h1>
-<div style="break-before: page; page-break-before: always;"></div><h1 id="forc-run"><a class="header" href="#forc-run">forc run</a></h1>
-<div style="break-before: page; page-break-before: always;"></div><h1 id="forc-explore"><a class="header" href="#forc-explore">forc explore</a></h1>
-<div style="break-before: page; page-break-before: always;"></div><h1 id="forc-fmt"><a class="header" href="#forc-fmt">forc fmt</a></h1>
-<div style="break-before: page; page-break-before: always;"></div><h1 id="forc-lsp"><a class="header" href="#forc-lsp">forc lsp</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="forc-deploy"><a class="header" href="#forc-deploy">forc-deploy</a></h1>
+<h2 id="usage-12"><a class="header" href="#usage-12">USAGE:</a></h2>
+<p>forc deploy [OPTIONS] [SIGNING_KEY]</p>
+<h2 id="args-5"><a class="header" href="#args-5">ARGS:</a></h2>
+<p>&lt;<em>SIGNING_KEY</em>&gt;
+Set the key to be used for signing</p>
+<h2 id="options-12"><a class="header" href="#options-12">OPTIONS:</a></h2>
+<p><code>--build-profile</code> &lt;<em>BUILD_PROFILE</em>&gt;</p>
+<p>Build target for code generation. Name of the build profile to use. If it is not
+specified, forc will use debug build profile</p>
+<p><code>-g</code>, <code>--debug-outfile</code> &lt;<em>DEBUG_OUTFILE</em>&gt;</p>
+<p>If set, outputs source file mapping in JSON format</p>
+<p><code>--gas-limit</code> &lt;<em>GAS_LIMIT</em>&gt;</p>
+<p>Set the transaction gas limit. Defaults to the maximum gas limit</p>
+<p><code>--gas-price</code> &lt;<em>GAS_PRICE</em>&gt;</p>
+<p>Set the transaction gas price. Defaults to 0</p>
+<p><code>-h</code>, <code>--help</code> </p>
+<p>Print help information</p>
+<p><code>--locked</code> </p>
+<p>Requires that the Forc.lock file is up-to-date. If the lock file is missing, or it needs
+to be updated, Forc will exit with an error</p>
+<p><code>--minify-json-abi</code> </p>
+<p>By default the JSON for ABIs is formatted for human readability. By using this option
+JSON output will be &quot;minified&quot;, i.e. all on one line without whitespace</p>
+<p><code>--minify-json-storage-slots</code> </p>
+<p>By default the JSON for initial storage slots is formatted for human readability. By
+using this option JSON output will be &quot;minified&quot;, i.e. all on one line without
+whitespace</p>
+<p><code>-o</code> &lt;<em>BINARY_OUTFILE</em>&gt;</p>
+<p>If set, outputs a binary file representing the script bytes</p>
+<p><code>--offline</code> </p>
+<p>Offline mode, prevents Forc from using the network when managing dependencies. Meaning
+it will only try to use previously downloaded dependencies</p>
+<p><code>--output-directory</code> &lt;<em>OUTPUT_DIRECTORY</em>&gt;</p>
+<p>The directory in which the sway compiler output artifacts are placed.</p>
+<p>By default, this is <code>&lt;project-root&gt;/out</code>.</p>
+<p><code>-p</code>, <code>--path</code> &lt;<em>PATH</em>&gt;</p>
+<p>Path to the project, if not specified, current working directory will be used</p>
+<p><code>--print-ast</code> </p>
+<p>Print the generated Sway AST (Abstract Syntax Tree)</p>
+<p><code>--print-dca-graph</code> </p>
+<p>Print the computed DCA (Dead Code Analysis) graph</p>
+<p><code>--print-finalized-asm</code> </p>
+<p>Print the finalized ASM.</p>
+<p>This is the state of the ASM with registers allocated and optimisations applied.</p>
+<p><code>--print-intermediate-asm</code> </p>
+<p>Print the generated ASM.</p>
+<p>This is the state of the ASM prior to performing register allocation and other ASM
+optimisations.</p>
+<p><code>--print-ir</code> </p>
+<p>Print the generated Sway IR (Intermediate Representation)</p>
+<p><code>--release</code> </p>
+<p>Use release build plan. If a custom release plan is not specified, it is implicitly
+added to the manifest file.</p>
+<p>If --build-profile is also provided, forc omits this flag and uses provided
+build-profile.</p>
+<p><code>-t</code>, <code>--terse</code> </p>
+<p>Terse mode. Limited warning and error output</p>
+<p><code>--time-phases</code> </p>
+<p>Output the time elapsed over each part of the compilation process</p>
+<p><code>-u</code>, <code>--url</code> &lt;<em>URL</em>&gt;</p>
+<p>The node url to deploy, if not specified uses DEFAULT_NODE_URL. If url is specified
+overrides network url in manifest file (if there is one)</p>
+<p><code>--unsigned</code> </p>
+<p>Do not sign the transaction</p>
+<p><code>-V</code>, <code>--version</code> </p>
+<p>Print version information<!-- markdownlint-disable MD041 --></p>
+<h2 id="example-7"><a class="header" href="#example-7">EXAMPLE</a></h2>
+<p>You can use <code>forc deploy</code>, which triggers a contract deployment transaction and sends it to a running node.</p>
+<p>Alternatively, you can deploy your Sway contract programmatically using <a href="https://github.com/FuelLabs/fuels-rs">fuels-rs</a>, our Rust SDK.</p>
+<p>You can find an example within our <a href="https://fuellabs.github.io/fuels-rs/latest/getting-started/basics.html#deploying-a-sway-contract">fuels-rs book</a>.</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="forc-run"><a class="header" href="#forc-run">forc-run</a></h1>
+<p>Run script project. Crafts a script transaction then sends it to a running node</p>
+<h2 id="usage-13"><a class="header" href="#usage-13">USAGE:</a></h2>
+<p>forc run [OPTIONS] [ARGS]</p>
+<h2 id="args-6"><a class="header" href="#args-6">ARGS:</a></h2>
+<p>&lt;<em>NODE_URL</em>&gt;
+URL of the Fuel Client Node</p>
+<p>[env: FUEL_NODE_URL=]</p>
+<p>&lt;<em>SIGNING_KEY</em>&gt;
+Set the key to be used for signing</p>
+<h2 id="options-13"><a class="header" href="#options-13">OPTIONS:</a></h2>
+<p><code>--build-profile</code> &lt;<em>BUILD_PROFILE</em>&gt;</p>
+<p>Name of the build profile to use. If it is not specified, forc will use debug build
+profile</p>
+<p><code>--contract</code> &lt;<em>CONTRACT</em>&gt;</p>
+<p>32-byte contract ID that will be called during the transaction</p>
+<p><code>-d</code>, <code>--data</code> &lt;<em>DATA</em>&gt;</p>
+<p>Hex string of data to input to script</p>
+<p><code>--dry-run</code> </p>
+<p>Only craft transaction and print it out</p>
+<p><code>-g</code>, <code>--debug-outfile</code> &lt;<em>DEBUG_OUTFILE</em>&gt;</p>
+<p>If set, outputs source file mapping in JSON format</p>
+<p><code>--gas-limit</code> &lt;<em>GAS_LIMIT</em>&gt;</p>
+<p>Set the transaction gas limit. Defaults to the maximum gas limit</p>
+<p><code>--gas-price</code> &lt;<em>GAS_PRICE</em>&gt;</p>
+<p>Set the transaction gas price. Defaults to 0</p>
+<p><code>-h</code>, <code>--help</code> </p>
+<p>Print help information</p>
+<p><code>-k</code>, <code>--kill-node</code> </p>
+<p>Kill Fuel Node Client after running the code. This is only available if the node is
+started from <code>forc run</code></p>
+<p><code>--locked</code> </p>
+<p>Requires that the Forc.lock file is up-to-date. If the lock file is missing, or it needs
+to be updated, Forc will exit with an error</p>
+<p><code>--minify-json-abi</code> </p>
+<p>By default the JSON for ABIs is formatted for human readability. By using this option
+JSON output will be &quot;minified&quot;, i.e. all on one line without whitespace</p>
+<p><code>--minify-json-storage-slots</code> </p>
+<p>By default the JSON for initial storage slots is formatted for human readability. By
+using this option JSON output will be &quot;minified&quot;, i.e. all on one line without
+whitespace</p>
+<p><code>-o</code> &lt;<em>BINARY_OUTFILE</em>&gt;</p>
+<p>If set, outputs a binary file representing the script bytes</p>
+<p><code>--output-directory</code> &lt;<em>OUTPUT_DIRECTORY</em>&gt;</p>
+<p>The directory in which the sway compiler output artifacts are placed.</p>
+<p>By default, this is <code>&lt;project-root&gt;/out</code>.</p>
+<p><code>-p</code>, <code>--path</code> &lt;<em>PATH</em>&gt;</p>
+<p>Path to the project, if not specified, current working directory will be used</p>
+<p><code>--print-ast</code> </p>
+<p>Print the generated Sway AST (Abstract Syntax Tree)</p>
+<p><code>--print-dca-graph</code> </p>
+<p>Print the computed DCA (Dead Code Analysis) graph</p>
+<p><code>--print-finalized-asm</code> </p>
+<p>Print the finalized ASM.</p>
+<p>This is the state of the ASM with registers allocated and optimisations applied.</p>
+<p><code>--print-intermediate-asm</code> </p>
+<p>Print the generated ASM.</p>
+<p>This is the state of the ASM prior to performing register allocation and other ASM
+optimisations.</p>
+<p><code>--print-ir</code> </p>
+<p>Print the generated Sway IR (Intermediate Representation)</p>
+<p><code>-r</code>, <code>--pretty-print</code> </p>
+<p>Pretty-print the outputs from the node</p>
+<p><code>--release</code> </p>
+<p>Use release build plan. If a custom release plan is not specified, it is implicitly
+added to the manifest file.</p>
+<p>If --build-profile is also provided, forc omits this flag and uses provided
+build-profile.</p>
+<p><code>--simulate</code> </p>
+<p>Execute the transaction and return the final mutated transaction along with receipts
+(which includes whether the transaction reverted or not). The transaction is not
+inserted in the node's view of the blockchain, (i.e. it does not affect the chain state)</p>
+<p><code>-t</code>, <code>--terse</code> </p>
+<p>Terse mode. Limited warning and error output</p>
+<p><code>--time-phases</code> </p>
+<p>Output the time elapsed over each part of the compilation process</p>
+<p><code>--unsigned</code> </p>
+<p>Do not sign the transaction</p>
+<p><code>-V</code>, <code>--version</code> </p>
+<p>Print version information</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="forc-explore"><a class="header" href="#forc-explore">forc-explore</a></h1>
+<p>Forc plugin for running the Fuel Block Explorer.</p>
+<h2 id="usage-14"><a class="header" href="#usage-14">USAGE:</a></h2>
+<p>forc-explore [OPTIONS] [SUBCOMMAND]</p>
+<h2 id="options-14"><a class="header" href="#options-14">OPTIONS:</a></h2>
+<p><code>-h</code>, <code>--help</code> </p>
+<p>Print help information</p>
+<p><code>-p</code>, <code>--port</code> &lt;<em>PORT</em>&gt;</p>
+<p>The port number at which the explorer will run on localhost [default: 3030]</p>
+<p><code>-V</code>, <code>--version</code> </p>
+<p>Print version information</p>
+<h2 id="subcommands"><a class="header" href="#subcommands">SUBCOMMANDS:</a></h2>
+<p><code>clean</code></p>
+<p>Cleans up any existing state associated with the fuel block explorer</p>
+<p><code>help</code></p>
+<p>Print this message or the help of the given subcommand(s)</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="forc-fmt"><a class="header" href="#forc-fmt">forc-fmt</a></h1>
+<p>Forc plugin for running the Sway code formatter.</p>
+<h2 id="usage-15"><a class="header" href="#usage-15">USAGE:</a></h2>
+<p>forc-fmt [OPTIONS]</p>
+<h2 id="options-15"><a class="header" href="#options-15">OPTIONS:</a></h2>
+<p><code>-c</code>, <code>--check</code> </p>
+<p>Run in 'check' mode.</p>
+<ul>
+<li>Exits with <code>0</code> if input is formatted correctly. - Exits with <code>1</code> and prints a diff if
+formatting is required.</li>
+</ul>
+<p><code>-h</code>, <code>--help</code> </p>
+<p>Print help information</p>
+<p><code>-p</code>, <code>--path</code> &lt;<em>PATH</em>&gt;</p>
+<p>Path to the project, if not specified, current working directory will be used</p>
+<p><code>-V</code>, <code>--version</code> </p>
+<p>Print version information</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="forc-lsp"><a class="header" href="#forc-lsp">forc-lsp</a></h1>
+<p>Forc plugin for the Sway LSP (Language Server Protocol) implementation.</p>
+<h2 id="usage-16"><a class="header" href="#usage-16">USAGE:</a></h2>
+<p>forc-lsp</p>
+<h2 id="options-16"><a class="header" href="#options-16">OPTIONS:</a></h2>
+<p><code>-h</code>, <code>--help</code> </p>
+<p>Print help information</p>
+<p><code>-V</code>, <code>--version</code> </p>
+<p>Print version information</p>
 
                     </main>
 
