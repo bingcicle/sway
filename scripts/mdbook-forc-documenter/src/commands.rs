@@ -104,4 +104,5 @@ mod tests {
             "forc explore",
             get_forc_command_from_file_name(OsString::from("forc_explore.md")),
         );
+    }
 }
